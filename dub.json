@@ -1,0 +1,16 @@
+{
+    "name": "mars",
+    "authors": ["Paolo Invernizzi"],
+    "description": "Server Side support for Mars.",
+    "copyright": "Copyright © 2016, Paolo Invernizzi",
+    "license": "MIT",
+
+    "targetPath": "bin",
+    "dependencies": 
+    {
+        "vibe-d:core": "~>0.7.30",
+        "vibe-d:http": "~>0.7.30",
+        "ddb": "~>0.2.4",
+        "msgpack-d": "~>1.0.0-beta.5"
+    }
+}
