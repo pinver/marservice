@@ -80,7 +80,6 @@ struct MarsClient
     string id() { return id_; }
     
     string callServerMethod(string method, string parameters){
-        import std.stdio; writeln("client.callServerMethod(method:%s, parameters:%s)", method, parameters);
         if( serverSideMethods !is null ){
             return serverSideMethods(method, parameters);
         }
