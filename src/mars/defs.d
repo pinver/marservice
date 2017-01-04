@@ -5,8 +5,8 @@ import std.meta;
 import std.traits;
 
 struct Schema {
-	string name;
-	immutable(Table)[] tables;
+    string name;
+    immutable(Table)[] tables;
 }
 
 struct Table {
@@ -54,15 +54,15 @@ unittest
 }
 
 struct Col {
-	string name;
-	Type type;
-	bool null_;
+    string name;
+    Type type;
+    bool null_;
 }
 
 struct Reference {
-	size_t[] referenceCols;
-	string referencedTable;
-	size_t[] referencedCols;
+    size_t[] referenceCols;
+    string referencedTable;
+    size_t[] referencedCols;
 }
 
 enum Type { unknown, date, doublePrecision, integer, real_, smallint, smallserial, serial, text, varchar }
