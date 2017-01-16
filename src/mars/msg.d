@@ -9,7 +9,7 @@ enum MsgType {
     syncOperationRequest = 20, syncOperationReply,
     importValuesRequest  = 22, importValuesReply,
     insertValuesRequest  = 24, insertValuesReply,
-    updateValuesRequest  = 25, updateValuesReply,
+    updateValuesRequest  = 26, updateValuesReply,
 
     welcomeBroadcast = 100, goodbyBroadcast,
 
@@ -82,6 +82,7 @@ struct InsertValuesReply {
 
 struct UpdateValuesRequest {
     static immutable type = MsgType.updateValuesRequest;
+    int statementIndex;
     immutable(ubyte)[] bytes;
 }
 

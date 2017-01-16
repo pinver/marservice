@@ -95,6 +95,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 
     /// update row in the server table, turning the client table out of sync
     void updateRow(ColumnsStruct record){
+        import std.stdio; writeln("update row:", record);
         KeysStruct keys = pkValues!table(record);
         auto v = keys in toInsert;
         if( v !is null ){ 
@@ -111,6 +112,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             }
         }
         fixtures[keys] = record;
+        ops ~= new ClientUpdateValues!ClientT();
     }
 
     /// returns the packet selected rows
@@ -219,7 +221,6 @@ private
                 auto req = UpdateValuesRequest();
                 req.statementIndex = sst.index.to!int *2 +1;
                 req.bytes = payload;
-                req.keys = sst.packKeysToUpdate();
                 marsClient.sendRequest(req);
             }
         }

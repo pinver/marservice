@@ -49,6 +49,10 @@ void protoMars(S)(MarsClient* client, S socket_)
                 logInfo("mars - received an insertValuesReply");
                 break;
 
+            case updateValuesReply:
+                logInfo("mars - received an updateValuesReply");
+                break;
+
             case callServerMethodRequest:
                 logInfo("mars - received a callServerMethodRequest");
                 protoCallServerMathod(client, socket);
