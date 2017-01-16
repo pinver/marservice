@@ -53,7 +53,8 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
      
     alias ColumnsType = asD!Columns; /// an AliasSeq of the D types for the table columns...
     alias ColumnsStruct = asStruct!table; 
-    
+    alias KeysStruct = asPkStruct!table;
+
     this() { super(table); } 
 
     // interface needed to handle the records in a generic way ...
@@ -69,7 +70,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     /// returns 'limit' rows starting from 'offset'.
     auto selectRows(size_t offset = 0, size_t limit = size_t.max) const {
         size_t till  = (limit + offset) > count ? count : (limit + offset);
-        return fixtures[offset .. till];
+        return fixtures.values()[offset .. till];
     }
     auto selectRows(Database db, size_t offset = 0, size_t limit = size_t.max) const {
         auto resultSet = db.executeQueryUnsafe("select * from %s limit %d offset %d".format(
@@ -83,8 +84,9 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 
     /// insert a new row in the server table, turning client table out of sync
     auto insertRow(ColumnsStruct fixture){
-        fixtures ~= fixture;
-        toInsert ~= fixture;
+        KeysStruct keys = pkValues!table(fixture);
+        fixtures[keys] = fixture;
+        toInsert[keys] = fixture;
         ops ~= new ClientInsertValues!ClientT();
     }
 
@@ -98,17 +100,19 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     override immutable(ubyte)[] packRowsToInsert() {
         import msgpack : pack;
         auto packed = pack!(true)(toInsert).idup;
-        toInsert = [];
+        toInsert = null;
         return packed;
     }
 
     void loadFixture(ColumnsStruct fixture){
-        fixtures ~= fixture;
+        KeysStruct keys = pkValues!table(fixture);
+        fixtures[keys] = fixture;
     }
 
-    asStruct!(table)[] fixtures;
-    asStruct!(table)[] toInsert;
+    asStruct!(table)[asPkStruct!(table)] fixtures;
+    asStruct!(table)[asPkStruct!(table)] toInsert;
 }
+
 
 struct ClientSideTable
 {
@@ -181,5 +185,8 @@ unittest
     // ... che eseguito si occupa di gestire il socket, e aggiornare client e server side instances.
     auto op = sst.ops[$-1];
     op.execute(MarsClientMock(), cst, sst);
+
+    // ...posso aggiornare uno dei valori con update, in questo caso la primary key è la colonna c1
+//    sst.update(sst.ColumnsStruct(2, "z");
 }
 

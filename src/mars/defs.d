@@ -194,3 +194,19 @@ template asPkStruct(alias t)
 }
 static assert(is(asPkStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [0], [])) == struct ));
 
+/**
+ * returns the values of the primary keys of this table row. */
+auto pkValues(alias table)(asStruct!table fixture)
+{
+    asPkStruct!table keys;
+    // XXX fix with recursion
+    static if(table.primaryKey.length == 1){
+        keys.tupleof[0] = fixture.tupleof[0];
+    }
+    else static if(table.primaryKey.length == 2){
+        keys.tupleof[0] = fixture.tupleof[0];
+        keys.tupleof[1] = fixture.tupleof[1];
+    }
+    else static assert(false);
+    return keys;
+}
