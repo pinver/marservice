@@ -79,7 +79,7 @@ struct Table {
     
     /**
      * returns the primary keys columns of a table */
-    const(Col)[] pkCols() const
+    immutable(Col)[] pkCols() const
     {
         import std.array : array;
         import std.range : indexed;
@@ -173,6 +173,9 @@ private template asStruct_(alias c) if( is(Unqual!(typeof(c)) : immutable(Col)[]
     }
     else static assert(false);
 }
+
+
+
 template asStruct(alias t)
 {
     enum cols = t.columns;
@@ -181,4 +184,13 @@ template asStruct(alias t)
     mixin(def ~"; alias asStruct = " ~ structName ~ ";");
 }
 static assert(is( asStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [], [])) == struct )); 
+
+template asPkStruct(alias t)
+{
+    enum cols = t.pkCols;
+    enum string structName = t.name ~ "PkRow";
+    enum string def = "struct " ~ structName ~ " {" ~ asStruct_!(cols) ~ "}";
+    mixin(def ~"; alias asPkStruct = " ~ structName ~ ";");
+}
+static assert(is(asPkStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [0], [])) == struct ));
 
