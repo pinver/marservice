@@ -30,15 +30,13 @@ string createDatabase(const(Schema) schema)
  */
 string createTable(const(Schema) schema, const(Table) table)
 {
-    assert( table.primaryKey.length <=1 ); // only one column primary keys
-
         
     auto primaryKey(T)(T t){
         ulong i = t.index;
         string v = t.value;
 
         string postfix = "";
-        if( table.primaryKey.length ==1 && table.primaryKey[0] == i )
+        if( canFind(table.primaryKey, i) ) //  table.primaryKey.length ==1 && table.primaryKey[0] == i )
             postfix = " primary key";
         return typeof(t)(i, v ~ postfix);
     }
