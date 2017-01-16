@@ -7,7 +7,9 @@ import std.random;
 import std.range;
 import std.digest.sha;
 import std.string;
+import std.experimental.logger;
 import vibe.core.log;
+
 import mars.msg;
 import mars.client;
 import mars.server;
@@ -27,16 +29,17 @@ void protoAuth(S)(MarsClient* client, S socket)
     socket.sendReply(authenticationRequest, AuthenticationReply(seed));
 
     auto authenticateRequest = socket.receiveMsg!AuthenticateRequest;
-        
-    string hash256 = sha256Of(seed ~ "password").toHexString();
+    logInfo("S <-- C | authenticate request, hash:%s", authenticateRequest.hash);
+    logInfo("password hash:%s", sha256Of("password").toHexString());
+    string hash256 = sha256Of(seed ~ sha256Of("password").toHexString()).toHexString();
     bool authorised = authenticateRequest.hash.toUpper() == hash256;
-    client.authoriseUser(username);
+    bool dbAuthorised = client.authoriseUser(username, "postgres");
     //logInfo("client authorised? %s", authorised); 
-    
 
     auto reply = AuthenticateReply(! authorised);
     reply.sqlCreateDatabase = marsServer.configuration.alasqlCreateDatabase;
     reply.sqlStatements = marsServer.configuration.alasqlStatements;
+    logInfo("S --> C | authenticate reply, authorised:%s", authorised);
     socket.sendReply(authenticateRequest, reply);
 
     // ... try the push from the server, a new client has connected ...

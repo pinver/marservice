@@ -108,12 +108,14 @@ string toSql(Type t){
         case text: return "text";
         case real_: return "real";
         case doublePrecision: return "double precision";
-        
+
+        // right now handle as a smallint, insert client side not implemented right now
+        case smallserial: return "smallint";
+
         case unknown:
         case date:
-        case smallserial:
         case serial:
-        case varchar:
+        case varchar: // varchar(n), tbd as column
             assert(false, t.to!string); // not implemented right now, catch at CT
     }
 }

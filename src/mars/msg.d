@@ -6,8 +6,9 @@ enum MsgType {
     authenticateRequest, authenticateReply,
     discardAuthenticationRequest, discardAuthenticationReply,
 
-    importValuesRequest = 20, importValuesReply,
-    insertValuesRequest = 22, insertValuesReply,
+    syncOperationRequest = 20, syncOperationReply,
+    importValuesRequest  = 22, importValuesReply,
+    insertValuesRequest  = 24, insertValuesReply,
 
     welcomeBroadcast = 100, goodbyBroadcast,
 
@@ -55,6 +56,15 @@ struct ImportValuesRequest {
 
 struct ImportValuesReply {
     static immutable type = MsgType.importValuesReply;
+    int donno;
+}
+
+struct SyncOperationRequest {
+    static immutable type = MsgType.syncOperationRequest;
+    int syncOperation; // 0 = initial sync start 1 = initial sync finished
+}
+struct SyncOperationReply {
+    static immutable type = MsgType.syncOperationReply;
     int donno;
 }
 

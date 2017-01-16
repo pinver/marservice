@@ -14,6 +14,7 @@ import mars.protomars : MarsProxy; // XXX per instanziare la variabile per il so
                                    // visto che è li che, dopo aver stabilito che è un client mars, instanzio il socket.
 
 import mars.sync;
+import mars.pgsql;
 
 struct MarsClient
 {
@@ -49,7 +50,10 @@ struct MarsClient
         ConnessionEvent[] connectionEvents;
     }
 
-    this(string id){ this.id_ = id; }
+    this(string id, const DatabaseService databaseService){ 
+        this.id_ = id; 
+        this.databaseService = databaseService;
+    }
 
     /**
      * Push a forward-only message to the client, a reply is not expected. */
@@ -73,7 +77,21 @@ struct MarsClient
         this.socket = socket;
     }
 
-    void authoriseUser(string username) { this.username = username; }
+    /**
+     * Called by the authentication protocol.
+     * 
+     * Returns: false if PostgreSQL is offline or user in not authorised, or true. */
+    bool authoriseUser(string username, string pgpassword) {
+        this.username = username;
+        if( databaseService.host != "" ){
+            db = databaseService.connect(username, pgpassword);
+            if( db is null ){
+                logWarn("S --- C | the database is offline, can't authorise");
+                return false;
+            }
+        }
+        return true;
+    }
     void discardAuthorisation() { this.username = ""; }
 
     bool authorised() { return this.username != ""; }
@@ -91,12 +109,13 @@ struct MarsClient
         string id_;
 
         string username = "";
-        string password;
+        //string password;
         string seed;
 
         MarsProxy!Proxy socket;
         
         public typeof(MarsServer.serverSideMethods) serverSideMethods;
-
+        DatabaseService databaseService;
+        public Database db;
     }
 }

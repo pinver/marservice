@@ -1,13 +1,21 @@
+/**
+ * the `sync` module operate on a generic database, to support mock. The module is feeded with a concrete db
+ * like the `pgsql`.
+ */
+
 module mars.server;
 
 import mars.client;
 import mars.defs;
+
 import mars.sync;
+import mars.pgsql;
+import mars.msg;
 
 import vibe.core.log;
 
 void InstantiateTables(alias tables, F...)(MarsServer m, F fixtures) {
-    static assert( tables.length > 0 && fixtures.length > 0, "some table is without fixtures"); 
+    static assert( tables.length > 0 && fixtures.length > 0, "every table must have at least an empty fixtures array"); 
     InstantiateServerSideTable!(tables[0], typeof(fixtures[0]))(m, fixtures[0]);
     static if( tables.length > 1 ){
         InstantiateTables!(tables[1 .. $])(m, fixtures[1 .. $]);
@@ -43,9 +51,9 @@ class MarsServer
     {
         auto client = clientId in marsClients;
         if( client is null ){
-            marsClients[clientId] = MarsClient(clientId);
+            marsClients[clientId] = MarsClient(clientId, configuration.databaseService);
             client = clientId in marsClients;
-            
+
             // ... the tables that are exposed in the schema ...
             //import vibe.core.log; logInfo("mars - creating client side tables for client %s", clientId);
             foreach(table; tables){
@@ -92,13 +100,6 @@ class MarsServer
     }
 
 
-    static struct MarsServerConfiguration
-    {
-        immutable(Schema) schemaExposed;
-        string alasqlCreateDatabase;
-        immutable(string)[] alasqlStatements;
-        immutable string[] serverMethods;
-    }
 
     static MarsServerConfiguration ExposeSchema(immutable(Schema) schema)
     {
@@ -111,7 +112,6 @@ class MarsServer
         return MarsServerConfiguration( schema, createDatabase(schema), statements );    
     }
 
-
     MarsServerConfiguration configuration;
 
     private void startDatabaseHandler(){
@@ -120,6 +120,7 @@ class MarsServer
         import vibe.core.log : logInfo;
         
         logInfo("mars - database handler starting.");
+        
         foreach(t; tables){
             logInfo("mars - exposing table %s to clients", t);
         }
@@ -141,14 +142,25 @@ class MarsServer
             
             foreach(ref client; marsClients ){
                if( client.isConnected && client.authorised ){
+                   bool syncStarted = false;
                    //logInfo("mars - database operations for client %s", client.id);
+                   auto req = SyncOperationRequest();
+                   req.syncOperation = 0;
                    foreach( table; tables ){
                        //logInfo("mars - database operations for client %s table %s", client.id, table.definition.name);
                        foreach(op; table.ops){
+                           if( ! syncStarted ){
+                               syncStarted = true; 
+                               client.sendRequest(req);
+                           }
                            //logInfo("mars - executing database operation for client %s", client.id);
                            op.execute(&client, client.tables[table.definition.name], table);
                        }
                        table.ops = []; // XXX gestisci le singole failure...
+                   }
+                   if( syncStarted ){
+                       req.syncOperation = 1;
+                       client.sendRequest(req);
                    }
                } 
             }
@@ -158,11 +170,29 @@ class MarsServer
     private {
         MarsClient[string] marsClients;
         BaseServerSideTable!(MarsClient*)[] tables;
+        Database db;
     }
 
 }
 __gshared MarsServer marsServer;
 
-    static MarsServer.MarsServerConfiguration ExposeServerMethods(MarsServer.MarsServerConfiguration c, const string[] methods){
-        return MarsServer.MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, methods.idup);
-    }
+struct MarsServerConfiguration
+{
+    immutable(Schema) schemaExposed;
+    string alasqlCreateDatabase;
+    immutable(string)[] alasqlStatements;
+    immutable string[] serverMethods;
+
+    immutable DatabaseService databaseService;
+}
+
+static MarsServerConfiguration ExposeServerMethods(MarsServerConfiguration c, const string[] methods){
+    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, methods.idup,
+            c.databaseService);
+}
+
+MarsServerConfiguration PostgreSQL(MarsServerConfiguration c, const string host, const ushort port, const string db){
+    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.serverMethods,
+            DatabaseService(host, port, db));
+}
+

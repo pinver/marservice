@@ -1,23 +1,71 @@
 
+
 module mars.defs;
 
 import std.meta;
 import std.traits;
+import std.algorithm;
+import std.array;
 
+/+
+struct Schema2 
+{
+    this(string name, string[] tt) {
+        this.name = name;
+        foreach(t; tt){
+            this.tables ~= Table2(&this, t);
+        }
+    }
+
+    string name;
+    Table2[] tables;
+}
+struct Table2 {
+    Schema2* schema;
+    string name;
+}
+enum s1 = Schema2("s1", ["t1", "t2"]);
+static assert(s1.tables.length == 2);
+static assert(s1.tables[0].schema is s1);
+
+auto schema(string name){ return Schema2(name, []); }
+auto table(Schema2 schema, string name){
+    string[] tt; foreach(t; schema.tables){ tt ~= t.name; }
+    return Schema2(schema.name, schema.tables.map!"a.name"().array ~ name);
+}
+
+enum ss = schema("foo");
+enum s2 = schema("foo").table("bar");
++/
 struct Schema {
     string name;
     immutable(Table)[] tables;
 }
-
-struct Table {
+/+
+Schema table(immutable(Schema) schema, string name, immutable(Col)[] columns, immutable(size_t)[] primaryKey, immutable(Reference)[] references, size_t index){
+    auto s = Schema(schema.name, schema.tables ~ immutable(Table)(name, columns, primaryKey, references, index));
+    return s;
+}
+unittest {
+    enum s = Schema("foo").table("bar", [immutable(Col)("c1", Type.integer)], [], [], 0);
+    static assert( s.tables.length == 1 );
+    enum s2 = Schema("foo")
+        .table("bar", [immutable(Col)("c1", Type.integer)], [], [], 0)
+        .table("bar", [immutable(Col)("c1", Type.integer)], [], [], 1)
+        ;
+    static assert( s.tables.length == 2 );
+}
++/
+struct Table { 
     string name;
     immutable(Col)[] columns;
     size_t[] primaryKey;
     Reference[] references;
     size_t index; /// the unique index of the table in the system.
+    immutable(Schema)* schema;
 
     /*
-    If the table primary key is set by the server, we need to return it to the client. */
+    If the table primary key is set by the terver, we need to return it to the client. */
     const(Col)[] returningCols() const
     {
         import std.algorithm : canFind, filter;
@@ -74,9 +122,12 @@ template asD(alias t) if( is(Unqual!(typeof(t)) == Type) )
 
     static if( t == Type.integer )              alias asD = int;
     else static if( t == Type.text )            alias asD = string;
+    else static if( t == Type.serial )          alias asD = int;
     else static if( t == Type.smallint )        alias asD = short;
+    else static if( t == Type.smallserial )     alias asD = short;
     else static if( t == Type.real_ )           alias asD = float;
     else static if( t == Type.doublePrecision ) alias asD = double;
+    else static if( t == Type.date )            alias asD = Date;
     else static assert(false);
 }
 
@@ -129,5 +180,5 @@ template asStruct(alias t)
     enum string def = "struct " ~ structName ~ " {" ~ asStruct_!(cols) ~ "}";
     mixin(def ~"; alias asStruct = " ~ structName ~ ";");
 }
-static assert(is( asStruct!(Table("t", [Col("c1", Type.integer), Col("c2", Type.text)], [], [])) == struct )); 
+static assert(is( asStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [], [])) == struct )); 
 

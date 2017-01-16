@@ -10,7 +10,10 @@ import std.algorithm;
 import std.meta;
 import std.typecons;
 
+import std.format;
+
 import mars.defs;
+import mars.pgsql;
 
 class BaseServerSideTable(ClientT)
 {
@@ -29,6 +32,7 @@ class BaseServerSideTable(ClientT)
 
     abstract immutable(ubyte)[] packRows(size_t offset = 0, size_t limit = size_t.max);
     abstract size_t count() const;
+    abstract size_t count(Database) const;
     abstract size_t countRowsToInsert() const;
     abstract size_t index() const;
     abstract immutable(ubyte)[] packRowsToInsert();
@@ -56,9 +60,9 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 
     /// returns the total number of records we are 'talking on' (filters? query?)
     override size_t count() const { return fixtures.length; }
-
+    override size_t count(Database db) const { return db.executeScalarUnsafe!size_t("select count(*) from %s".format(table.name)); } 
     override size_t countRowsToInsert() const { return toInsert.length; }
-
+    
     /// return the unique index identifier for this table, that's coming from the table definition in the app.d
     override size_t index() const { return Definition.index; }
 
@@ -66,6 +70,15 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     auto selectRows(size_t offset = 0, size_t limit = size_t.max) const {
         size_t till  = (limit + offset) > count ? count : (limit + offset);
         return fixtures[offset .. till];
+    }
+    auto selectRows(Database db, size_t offset = 0, size_t limit = size_t.max) const {
+        auto resultSet = db.executeQueryUnsafe("select * from %s limit %d offset %d".format(
+            table.name, limit, offset)
+        );
+        foreach(v; resultSet){
+            import std.stdio; writeln("selectRows:", v);
+        }
+        return [];
     }
 
     /// insert a new row in the server table, turning client table out of sync

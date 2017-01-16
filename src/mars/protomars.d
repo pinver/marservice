@@ -37,6 +37,10 @@ void protoMars(S)(MarsClient* client, S socket_)
                 protoDeauth(client, socket);
                 break;
 
+            case syncOperationReply:
+                logInfo("mars - received a syncOperationReply");
+                break;
+
             case importValuesReply:
                 logInfo("mars - received an importValuesReply");
                 break;
