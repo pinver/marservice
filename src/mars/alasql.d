@@ -20,6 +20,20 @@ unittest {
     assert( sql == "insert into bar values ($foo, $baz)", sql );
 }
 
+string updateParameter(const(Table) table)
+{
+    return "update %s set %s where %s"
+        .format(
+            table.name,
+            table.columns.map!( (c) => c.name ~ " = $" ~ c.name).join(", "),
+            table.pkCols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+        );
+}
+unittest {
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).updateParameter;
+    assert( sql == "update bar set foo = $foo, baz = $baz where foo = $keyfoo", sql );
+}
+
 string createDatabase(const(Schema) schema)
 {
     return schema.tables.map!( t => createTable(schema, t) )().join("; ");

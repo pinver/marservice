@@ -103,11 +103,12 @@ class MarsServer
 
     static MarsServerConfiguration ExposeSchema(immutable(Schema) schema)
     {
-        import mars.alasql : createDatabase, insertIntoParameter;
+        import mars.alasql : createDatabase, insertIntoParameter, updateParameter;
         
         immutable(string)[] statements;
         foreach(table; schema.tables){
             statements ~= table.insertIntoParameter;
+            statements ~= table.updateParameter;
         }
         return MarsServerConfiguration( schema, createDatabase(schema), statements );    
     }

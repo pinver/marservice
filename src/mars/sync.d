@@ -34,8 +34,10 @@ class BaseServerSideTable(ClientT)
     abstract size_t count() const;
     abstract size_t count(Database) const;
     abstract size_t countRowsToInsert() const;
+    abstract size_t countRowsToUpdate() const;
     abstract size_t index() const;
     abstract immutable(ubyte)[] packRowsToInsert();
+    abstract immutable(ubyte)[] packRowsToUpdate();
 
 
     immutable Table definition;   
@@ -63,6 +65,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     override size_t count() const { return fixtures.length; }
     override size_t count(Database db) const { return db.executeScalarUnsafe!size_t("select count(*) from %s".format(table.name)); } 
     override size_t countRowsToInsert() const { return toInsert.length; }
+    override size_t countRowsToUpdate() const { return toUpdate.length; }
     
     /// return the unique index identifier for this table, that's coming from the table definition in the app.d
     override size_t index() const { return Definition.index; }
@@ -83,11 +86,31 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     /// insert a new row in the server table, turning client table out of sync
-    auto insertRow(ColumnsStruct fixture){
+    void insertRow(ColumnsStruct fixture){
         KeysStruct keys = pkValues!table(fixture);
         fixtures[keys] = fixture;
         toInsert[keys] = fixture;
         ops ~= new ClientInsertValues!ClientT();
+    }
+
+    /// update row in the server table, turning the client table out of sync
+    void updateRow(ColumnsStruct record){
+        KeysStruct keys = pkValues!table(record);
+        auto v = keys in toInsert;
+        if( v !is null ){ 
+            *v = record;
+           assert( (keys in toUpdate) is null ); 
+        }
+        else {
+            v = keys in toUpdate;
+            if( v !is null ){
+                *v = record;
+            }
+            else {
+                toUpdate[keys] = record;
+            }
+        }
+        fixtures[keys] = record;
     }
 
     /// returns the packet selected rows
@@ -104,6 +127,23 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         return packed;
     }
 
+    /// return the packet rows to update in the client
+    override immutable(ubyte)[] packRowsToUpdate() {
+        static struct UpdateRecord {
+            KeysStruct keys;
+            asStruct!table record;
+        }
+        UpdateRecord[] records;
+        foreach(r; toUpdate.keys){
+            records ~= UpdateRecord(r, toUpdate[r]);
+        }
+            
+        import msgpack : pack;
+        auto packed = pack!(true)(records).idup;
+        toUpdate = null;
+        return packed;
+    }
+
     void loadFixture(ColumnsStruct fixture){
         KeysStruct keys = pkValues!table(fixture);
         fixtures[keys] = fixture;
@@ -111,6 +151,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 
     asStruct!(table)[asPkStruct!(table)] fixtures;
     asStruct!(table)[asPkStruct!(table)] toInsert;
+    asStruct!(table)[asPkStruct!(table)] toUpdate;
 }
 
 
@@ -142,7 +183,7 @@ private
                 auto payload = sst.packRows();
 
                 auto req = ImportValuesRequest();
-                req.statementIndex = sst.index.to!int;
+                req.statementIndex = sst.index.to!int *2;
                 req.bytes = payload;
                 marsClient.sendRequest(req);
             }
@@ -159,8 +200,26 @@ private
             if( sst.countRowsToInsert > 0 ){
                 auto payload = sst.packRowsToInsert();
                 auto req = InsertValuesRequest();
-                req.statementIndex = sst.index.to!int;
+                req.statementIndex = sst.index.to!int *2;
                 req.bytes = payload;
+                marsClient.sendRequest(req);
+            }
+        }
+    }
+
+    class ClientUpdateValues(MarsClientT) : SynOp!MarsClientT {
+
+        override void execute(MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst)
+        {
+            import mars.msg : UpdateValuesRequest;
+            import std.conv :to;
+
+            if( sst.countRowsToUpdate > 0 ){
+                auto payload = sst.packRowsToUpdate();
+                auto req = UpdateValuesRequest();
+                req.statementIndex = sst.index.to!int *2 +1;
+                req.bytes = payload;
+                req.keys = sst.packKeysToUpdate();
                 marsClient.sendRequest(req);
             }
         }
