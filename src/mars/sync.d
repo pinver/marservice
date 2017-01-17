@@ -124,7 +124,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     /// return the packet rows to insert in the client
     override immutable(ubyte)[] packRowsToInsert() {
         import msgpack : pack;
-        auto packed = pack!(true)(toInsert).idup;
+        auto packed = pack!(true)(toInsert.values()).idup;
         toInsert = null;
         return packed;
     }
