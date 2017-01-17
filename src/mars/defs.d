@@ -201,11 +201,11 @@ auto pkValues(alias table)(asStruct!table fixture)
     asPkStruct!table keys;
     // XXX fix with recursion
     static if(table.primaryKey.length == 1){
-        keys.tupleof[0] = fixture.tupleof[0];
+        keys.tupleof[0] = fixture.tupleof[table.primaryKey[0]];
     }
     else static if(table.primaryKey.length == 2){
         keys.tupleof[0] = fixture.tupleof[0];
-        keys.tupleof[1] = fixture.tupleof[1];
+        keys.tupleof[1] = fixture.tupleof[table.primaryKey[1]];
     }
     else static assert(false);
     return keys;
