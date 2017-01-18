@@ -151,6 +151,12 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         fixtures[keys] = fixture;
     }
 
+    void unsafeReset() {
+        fixtures = null;
+        toInsert = null;
+        toUpdate = null;
+    }
+
     asStruct!(table)[asPkStruct!(table)] fixtures;
     asStruct!(table)[asPkStruct!(table)] toInsert;
     asStruct!(table)[asPkStruct!(table)] toUpdate;
