@@ -22,12 +22,22 @@ unittest {
 
 string updateParameter(const(Table) table)
 {
-    return "update %s set %s where %s"
-        .format(
-            table.name,
-            table.columns.map!( (c) => c.name ~ " = $" ~ c.name).join(", "),
-            table.pkCols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
-        );
+    if( table.pkCols.length >0 ){
+        return "update %s set %s where %s"
+            .format(
+                    table.name,
+                    table.columns.map!( (c) => c.name ~ " = $" ~ c.name).join(", "),
+                    table.pkCols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+                   );
+    }
+    else {
+        return "update %s set %s where %s"
+            .format(
+                    table.name,
+                    table.columns.map!( (c) => c.name ~ " = $" ~ c.name).join(", "),
+                    table.columns.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+                   );
+    }
 }
 unittest {
     auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).updateParameter;
@@ -115,6 +125,7 @@ string toSql(Type t){
     import std.conv : to;
 
     final switch(t) with(Type) {
+        case boolean: return "boolean";
         case integer: return "integer";
         case smallint: return "smallint"; 
         case text: return "text";
