@@ -113,7 +113,7 @@ struct Reference {
     size_t[] referencedCols;
 }
 
-enum Type { unknown, date, doublePrecision, integer, real_, smallint, smallserial, serial, text, varchar }
+enum Type { unknown, date, doublePrecision, integer, real_, boolean, smallint, smallserial, serial, text, varchar }
 
 /**
  * returns the D type for the passed SQL type. */
@@ -123,6 +123,7 @@ template asD(alias t) if( is(Unqual!(typeof(t)) == Type) )
     static if( t == Type.integer )              alias asD = int;
     else static if( t == Type.text )            alias asD = string;
     else static if( t == Type.serial )          alias asD = int;
+    else static if( t == Type.boolean )         alias asD = bool;
     else static if( t == Type.smallint )        alias asD = short;
     else static if( t == Type.smallserial )     alias asD = short;
     else static if( t == Type.real_ )           alias asD = float;
@@ -171,7 +172,7 @@ private template asStruct_(alias c) if( is(Unqual!(typeof(c)) : immutable(Col)[]
     else static if(cols.length >1){
         enum string asStruct_ = (asD!(cols[0])).stringof ~ " " ~ cols[0].name ~ "; " ~ asStruct_!(cols[1 .. $]);
     }
-    else static assert(false);
+    else static assert(false, cols.length);
 }
 
 
@@ -187,7 +188,12 @@ static assert(is( asStruct!(Table("t", [immutable(Col)("c1", Type.integer), immu
 
 template asPkStruct(alias t)
 {
-    enum cols = t.pkCols;
+    static if( t.pkCols.length >0 ){
+        enum cols = t.pkCols;
+    }
+    else {
+        enum cols = t.columns;
+    }
     enum string structName = t.name ~ "PkRow";
     enum string def = "struct " ~ structName ~ " {" ~ asStruct_!(cols) ~ "}";
     mixin(def ~"; alias asPkStruct = " ~ structName ~ ";");
@@ -200,7 +206,16 @@ auto pkValues(alias table)(asStruct!table fixture)
 {
     asPkStruct!table keys;
     // XXX fix with recursion
-    static if(table.primaryKey.length == 1){
+    static if(table.primaryKey.length == 0){
+        static assert(keys.tupleof.length <=6, keys.tupleof.length);
+        static if(keys.tupleof.length == 1){ keys.tupleof[0] = fixture.tupleof[0]; }
+        static if(keys.tupleof.length == 2){ keys.tupleof[1] = fixture.tupleof[1]; }
+        static if(keys.tupleof.length == 3){ keys.tupleof[2] = fixture.tupleof[2]; }
+        static if(keys.tupleof.length == 4){ keys.tupleof[3] = fixture.tupleof[3]; }
+        static if(keys.tupleof.length == 5){ keys.tupleof[4] = fixture.tupleof[4]; }
+        static if(keys.tupleof.length == 5){ keys.tupleof[5] = fixture.tupleof[5]; }
+    }
+    else static if(table.primaryKey.length == 1){
         keys.tupleof[0] = fixture.tupleof[table.primaryKey[0]];
     }
     else static if(table.primaryKey.length == 2){

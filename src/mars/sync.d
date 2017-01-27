@@ -21,7 +21,7 @@ class BaseServerSideTable(ClientT)
         this.definition = definition;
     }
 
-    auto createClientSideTable() {
+    auto createClientSideTable(){
         auto cst = new ClientSideTable();
         final switch(cst.strategy) with(Strategy) {
             case easilySyncAll:
@@ -30,7 +30,8 @@ class BaseServerSideTable(ClientT)
         return cst;
     }
 
-    abstract immutable(ubyte)[] packRows(size_t offset = 0, size_t limit = size_t.max);
+    abstract immutable(ubyte)[] packRows(size_t offset = 0, size_t limit = long.max);
+    abstract immutable(ubyte)[] packRows(Database db, size_t offset = 0, size_t limit = long.max);
     abstract size_t count() const;
     abstract size_t count(Database) const;
     abstract size_t countRowsToInsert() const;
@@ -71,18 +72,23 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     override size_t index() const { return Definition.index; }
 
     /// returns 'limit' rows starting from 'offset'.
-    auto selectRows(size_t offset = 0, size_t limit = size_t.max) const {
+    auto selectRows(size_t offset = 0, size_t limit = long.max) const {
         size_t till  = (limit + offset) > count ? count : (limit + offset);
         return fixtures.values()[offset .. till];
     }
-    auto selectRows(Database db, size_t offset = 0, size_t limit = size_t.max) const {
-        auto resultSet = db.executeQueryUnsafe("select * from %s limit %d offset %d".format(
+    /// idem
+    auto selectRows(Database db, size_t offset = 0, size_t limit = long.max) const {
+        auto resultSet = db.executeQueryUnsafe!(asStruct!table)("select * from %s limit %d offset %d".format(
             table.name, limit, offset)
         );
+        asStruct!table[] rows;
         foreach(v; resultSet){
+            rows ~= v;
             import std.stdio; writeln("selectRows:", v);
+            // XXX
         }
-        return [];
+        resultSet.close();
+        return rows;
     }
 
     /// insert a new row in the server table, turning client table out of sync
@@ -116,9 +122,14 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     /// returns the packet selected rows
-    override immutable(ubyte)[] packRows(size_t offset = 0, size_t limit = size_t.max) const {
+    override immutable(ubyte)[] packRows(size_t offset = 0, size_t limit = long.max) const {
         import msgpack : pack;
         return pack!(true)(selectRows(offset, limit)).idup;
+    }
+    /// returns the packet selected rows
+    override immutable(ubyte)[] packRows(Database db, size_t offset = 0, size_t limit = long.max) const {
+        import msgpack : pack;
+        return pack!(true)(selectRows(db, offset, limit)).idup;
     }
 
     /// return the packet rows to insert in the client
@@ -176,11 +187,29 @@ private
 
     class SynOp(MarsClientT) {
         abstract void execute(MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst);
+        abstract void execute(Database db, MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst);
     }
 
     /// take all the rows in the server table and send them on the client table.
     class ClientImportValues(MarsClientT) : SynOp!MarsClientT {
         
+        override void execute(Database db, MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst)
+        {
+            assert(db !is null);
+
+            import mars.msg : ImportValuesRequest;
+            import std.conv : to;
+
+            // ... if the table is empty, simply do nothing ...
+            if( sst.count(db) > 0 ){
+                auto payload = sst.packRows(db);
+
+                auto req = ImportValuesRequest();
+                req.statementIndex = sst.index.to!int *2;
+                req.bytes = payload;
+                marsClient.sendRequest(req);
+            }
+        }
         override void execute(MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst)
         {
             import mars.msg : ImportValuesRequest;
@@ -213,6 +242,7 @@ private
                 marsClient.sendRequest(req);
             }
         }
+        override void execute(Database db, MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst){}
     }
 
     class ClientUpdateValues(MarsClientT) : SynOp!MarsClientT {
@@ -230,6 +260,7 @@ private
                 marsClient.sendRequest(req);
             }
         }
+        override void execute(Database db, MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst){}
     }
 }
 

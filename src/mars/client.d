@@ -90,6 +90,9 @@ struct MarsClient
                 return false;
             }
         }
+        else {
+            logWarn("S --- C | the database host is not specified, we are operating in offline mode");
+        }
         return true;
     }
     void discardAuthorisation() { this.username = ""; }

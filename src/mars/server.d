@@ -155,13 +155,14 @@ class MarsServer
                                client.sendRequest(req);
                            }
                            //logInfo("mars - executing database operation for client %s", client.id);
-                           op.execute(&client, client.tables[table.definition.name], table);
+                           op.execute(client.db, &client, client.tables[table.definition.name], table);
                        }
                        table.ops = []; // XXX gestisci le singole failure...
                    }
                    if( syncStarted ){
                        req.syncOperation = 1;
                        client.sendRequest(req);
+
                    }
                } 
             }
@@ -171,7 +172,6 @@ class MarsServer
     private {
         MarsClient[string] marsClients;
         BaseServerSideTable!(MarsClient*)[] tables;
-        Database db;
     }
 
 }

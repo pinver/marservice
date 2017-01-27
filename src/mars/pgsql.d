@@ -24,6 +24,7 @@ struct DatabaseService {
         }
         catch(Exception e){
             logWarn("S --- C | exception connecting to the PostgreSQL!");
+            logWarn("S --- C | %s", e);
         }
         return db;
     }
@@ -55,6 +56,9 @@ class Database
     }
     auto executeQueryUnsafe(string sql){
         return conn.executeQuery(sql);
+    }
+    auto executeQueryUnsafe(Row)(string sql){
+        return conn.executeQuery!Row(sql);
     }
 
     private {
