@@ -100,9 +100,8 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     /// update row in the server table, turning the client table out of sync
-    void updateRow(ColumnsStruct record){
-        import std.stdio; writeln("update row:", record);
-        KeysStruct keys = pkValues!table(record);
+    void updateRow(KeysStruct keys, ColumnsStruct record){
+        //KeysStruct keys = pkValues!table(record);
         auto v = keys in toInsert;
         if( v !is null ){ 
             *v = record;
@@ -262,6 +261,12 @@ private
         }
         override void execute(Database db, MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst){}
     }
+
+    class ServerUpdateValues(MarsClientT) : SynOp!MarsClientT {
+        override void execute(Database db, MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst){
+            
+        }
+    }
 }
 
 unittest
@@ -284,6 +289,7 @@ unittest
     op.execute(MarsClientMock(), cst, sst);
 
     // ...posso aggiornare uno dei valori con update, in questo caso la primary key è la colonna c1
-//    sst.update(sst.ColumnsStruct(2, "z");
+    sst.updateRow(sst.KeysStruct(2), sst.ColumnsStruct(2, "z"));
+    assert( sst.fixtures[sst.KeysStruct(2)] == sst.ColumnsStruct(2, "z") );
 }
 
