@@ -33,7 +33,10 @@ void protoAuth(S)(MarsClient* client, S socket)
     logInfo("password hash:%s", sha256Of("password").toHexString());
     string hash256 = sha256Of(seed ~ sha256Of("password").toHexString()).toHexString();
     bool authorised = authenticateRequest.hash.toUpper() == hash256;
-    bool dbAuthorised = client.authoriseUser(username, "postgres");
+    
+    string pgPassword = "postgres";
+    if( username == "pinver" ) pgPassword = "foaloke,"; // XXX 
+    bool dbAuthorised = client.authoriseUser(username, pgPassword); 
     //logInfo("client authorised? %s", authorised); 
 
     auto reply = AuthenticateReply(! authorised);

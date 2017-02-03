@@ -78,6 +78,9 @@ struct InsertValuesRequest {
 struct InsertValuesReply {
     static immutable type = MsgType.insertValuesReply;
     int donno;
+    immutable(ubyte)[] bytes = []; // the server inserted record
+    immutable(ubyte)[] clientKeys = [];
+    int statementIndex = -1; // the sql statement to use for emending the client with the server data
 }
 
 struct UpdateValuesRequest {

@@ -2,13 +2,25 @@
 module mars.pgsql;
 
 import std.algorithm;
+import std.conv;
 import std.format;
 import std.string;
+import std.range;
 
 import mars.defs;
 import ddb.postgres;
 import ddb.db;
 import vibe.core.log;
+
+string insertIntoReturningParameter(const(Table) table)
+{
+    return "insert into %s values (%s) returning *"
+        .format(table.name, iota(0, table.columns.length).map!( (c) => "$" ~ (c+1).to!string).join(", "));
+}
+unittest {
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[],[]).insertIntoReturningParameter();
+    assert( sql == "insert into bar values ($1, $2) returning *", sql );
+}
 
 struct DatabaseService {
     string host;
@@ -60,6 +72,16 @@ class Database
     auto executeQueryUnsafe(Row)(string sql){
         return conn.executeQuery!Row(sql);
     }
+    auto executeInsert(immutable(Table) table, Row)(Row record){
+        enum sql = insertIntoReturningParameter(table);
+        auto cmd = new PGCommand(conn, sql);
+        static if( record.tupleof.length >= 1 ){ cmd.parameters.add(1, table.columns[0].type.toPGType).value = record.tupleof[0]; }
+        static if( record.tupleof.length >= 2 ){ cmd.parameters.add(2, table.columns[1].type.toPGType).value = record.tupleof[1]; }
+        import std.experimental.logger; trace("ok, proviamo!!!!!");
+        Row result = cmd.executeQuery!Row().front;
+        trace("ANDATA??? MARO!!!");
+        return result;
+    }
 
     private {
         PostgresDB db;
@@ -70,6 +92,26 @@ class Database
 private {
     import mars.lexer;
     import mars.sqldb;
+
+
+    PGType toPGType(Type t){
+        final switch(t) with(Type) {
+            case boolean: return PGType.BOOLEAN;
+            case integer: return PGType.INT4; // XXX check
+            case smallint: return PGType.INT2; // XXX check 
+            case text: return PGType.TEXT;
+            case real_: return PGType.FLOAT4;
+            case doublePrecision: return PGType.FLOAT8;
+
+            case smallserial: return PGType.INT2; // XXX check
+
+            case unknown:
+            case date:
+            case serial:
+            case varchar: // varchar(n), tbd as column
+                              assert(false, t.to!string); // not implemented right now, catch at CT
+        }
+    }
 
     version(unittest){
         auto starwarSchema() pure {

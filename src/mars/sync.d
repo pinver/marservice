@@ -9,7 +9,7 @@ module mars.sync;
 import std.algorithm;
 import std.meta;
 import std.typecons;
-
+import std.experimental.logger;
 import std.format;
 
 import mars.defs;
@@ -40,6 +40,7 @@ class BaseServerSideTable(ClientT)
     abstract immutable(ubyte)[] packRowsToInsert();
     abstract immutable(ubyte)[] packRowsToUpdate();
 
+    abstract immutable(ubyte)[][2] insertRecord(Database, immutable(ubyte)[]);
 
     immutable Table definition;   
     private {
@@ -97,6 +98,23 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         fixtures[keys] = fixture;
         toInsert[keys] = fixture;
         ops ~= new ClientInsertValues!ClientT();
+    }
+
+    ColumnsStruct insertRecord(Database db, ColumnsStruct record){
+        trace("trace");
+        auto inserted = db.executeInsert!(table, ColumnsStruct)(record);
+        trace("trace");
+        return inserted;
+    }
+
+    override immutable(ubyte)[][2] insertRecord(Database db, immutable(ubyte)[] data){
+        import  msgpack : pack, unpack;
+        trace("trace");
+        ColumnsStruct record = unpack!(ColumnsStruct, true)(data);
+        trace("trace");
+        ColumnsStruct inserted = insertRecord(db, record);
+        trace("trace");
+        return [inserted.pack!(true).idup, inserted.pkValues!table().pack!(true).idup];
     }
 
     /// update row in the server table, turning the client table out of sync

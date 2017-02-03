@@ -10,6 +10,7 @@ import mars.msg;
 
 import mars.protoauth;
 import mars.protocallmethod;
+import mars.protoinsertvaluerequest;
 
 void protoMars(S)(MarsClient* client, S socket_)
 {
@@ -56,6 +57,11 @@ void protoMars(S)(MarsClient* client, S socket_)
             case callServerMethodRequest:
                 logInfo("mars - received a callServerMethodRequest");
                 protoCallServerMathod(client, socket);
+                break;
+
+            case insertValuesRequest:
+                logInfo("mars - received an insertValueRequest");
+                protoInsertValueRequest(client, socket);
                 break;
 
             default:
@@ -106,6 +112,10 @@ struct MarsProxy(S)
     }
 
     ReceivedMessage!M binaryAs(M)(){
+        import std.experimental.logger;
+        trace("trace");
+        auto msg = binary.unpack!(M, true);
+        trace("trace");
         return ReceivedMessage!M(false, messageId, binary.unpack!(M, true));
     }
 

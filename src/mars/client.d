@@ -1,7 +1,8 @@
 
 module mars.client;
 
-import std.datetime;
+import std.datetime,
+       std.experimental.logger;
 
 import vibe.core.log;
 
@@ -83,7 +84,7 @@ struct MarsClient
      * Returns: false if PostgreSQL is offline or user in not authorised, or true. */
     bool authoriseUser(string username, string pgpassword) {
         this.username = username;
-        if( databaseService.host != "" ){
+            if( databaseService.host != "" ){
             db = databaseService.connect(username, pgpassword);
             if( db is null ){
                 logWarn("S --- C | the database is offline, can't authorise");
@@ -102,9 +103,15 @@ struct MarsClient
     
     string callServerMethod(string method, string parameters){
         if( serverSideMethods !is null ){
-            return serverSideMethods(method, parameters);
+            return serverSideMethods(this, method, parameters);
         }
         assert(false); // catch on server side;
+    }
+
+    immutable(ubyte)[][2] vueInsertRecord(int statementIndex, immutable(ubyte)[] record){
+        trace("trace");
+        immutable(ubyte)[][2] inserted = marsServer.tables[statementIndex].insertRecord(db, record);
+        return inserted;
     }
     
     ClientSideTable*[string] tables;

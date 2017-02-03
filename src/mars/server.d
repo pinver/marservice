@@ -5,6 +5,8 @@
 
 module mars.server;
 
+import std.experimental.logger;
+
 import mars.client;
 import mars.defs;
 
@@ -89,7 +91,7 @@ class MarsServer
         }
     }
 
-    string delegate(string, string) serverSideMethods;
+    string delegate(MarsClient, string, string) serverSideMethods;
 
     // ================
     this(immutable(MarsServerConfiguration) c){
@@ -171,7 +173,7 @@ class MarsServer
 
     private {
         MarsClient[string] marsClients;
-        BaseServerSideTable!(MarsClient*)[] tables;
+    public    BaseServerSideTable!(MarsClient*)[] tables;
     }
 
 }

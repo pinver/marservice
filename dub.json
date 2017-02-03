@@ -6,6 +6,7 @@
     "license": "MIT",
 
     "targetPath": "bin",
+    "buildRequirements": ["silenceDeprecations"],
     "dependencies": 
     {
         "vibe-d:core": "~>0.7.30",
