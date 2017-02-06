@@ -142,9 +142,9 @@ class MarsServer
 
         while(true) {
             sleep(2.seconds);
-            
+
             foreach(ref client; marsClients ){
-               if( client.isConnected && client.authorised ){
+               if( client.isConnected && client.authorised && client.db !is null ){
                    bool syncStarted = false;
                    //logInfo("mars - database operations for client %s", client.id);
                    auto req = SyncOperationRequest();
