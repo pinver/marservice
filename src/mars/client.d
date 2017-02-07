@@ -114,7 +114,7 @@ struct MarsClient
         return inserted;
     }
     
-    ClientSideTable!(typeof(this)*)*[string] tables;
+    //ClientSideTable!(typeof(this)*)*[string] tables;
     private {
         string id_;
 

@@ -21,12 +21,16 @@ class BaseServerSideTable(ClientT)
         this.definition = definition;
     }
 
-    auto createClientSideTable(){
+    auto createClientSideTable(string clientid){
         auto cst = new ClientSideTable!ClientT();
         final switch(cst.strategy) with(Strategy) {
             case easilySyncAll:
                 cst.ops ~= new ClientImportValues!ClientT();
         }
+        // new client, new client side table
+        assert( (clientid in clientSideTables) is null );
+        clientSideTables[clientid] = cst;
+
         return cst;
     }
 
@@ -45,6 +49,10 @@ class BaseServerSideTable(ClientT)
     immutable Table definition;   
     private {
 
+        /// Every server table has a collection of the linked client side tables. The key element is the identifier of
+        /// the client, so that the collection can be kept clean when a client connect/disconnects.
+        public ClientSideTable!(ClientT)*[string] clientSideTables;
+        
         //public SynOp!ClientT[] ops;
 
     }
@@ -92,12 +100,14 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         return rows;
     }
 
-    /// insert a new row in the server table, turning client table out of sync
-    void insertRow(ColumnsStruct fixture, ClientT client){
+    /// insert a new row in the server table, turning clients table out of sync
+    void insertRow(ColumnsStruct fixture){
         KeysStruct keys = pkValues!table(fixture);
         fixtures[keys] = fixture;
         toInsert[keys] = fixture;
-        client.tables[table.name].ops ~= new ClientInsertValues!ClientT();
+        foreach(ref cst; clientSideTables.values){
+            cst.ops ~= new ClientInsertValues!ClientT();
+        }
     }
 
     ColumnsStruct insertRecord(Database db, ColumnsStruct record){
@@ -117,8 +127,8 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         return [inserted.pack!(true).idup, inserted.pkValues!table().pack!(true).idup];
     }
 
-    /// update row in the server table, turning the client table out of sync
-    void updateRow(KeysStruct keys, ColumnsStruct record, ClientT client){
+    /// update row in the server table, turning the client tables out of sync
+    void updateRow(KeysStruct keys, ColumnsStruct record){
         //KeysStruct keys = pkValues!table(record);
         auto v = keys in toInsert;
         if( v !is null ){ 
@@ -135,7 +145,9 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             }
         }
         fixtures[keys] = record;
-        client.tables[table.name].ops ~= new ClientUpdateValues!ClientT();
+        foreach(ref cst; clientSideTables.values){
+            cst.ops ~= new ClientUpdateValues!ClientT();
+        }
     }
 
     /// returns the packet selected rows
@@ -188,6 +200,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     asStruct!(table)[asPkStruct!(table)] fixtures;
     asStruct!(table)[asPkStruct!(table)] toInsert;
     asStruct!(table)[asPkStruct!(table)] toUpdate;
+
 }
 
 

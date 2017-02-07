@@ -58,9 +58,8 @@ class MarsServer
             client = clientId in marsClients;
 
             // ... the tables that are exposed in the schema ...
-            //import vibe.core.log; logInfo("mars - creating client side tables for client %s", clientId);
-            foreach(table; tables){
-                client.tables[table.definition.name] = table.createClientSideTable();
+            foreach(ref table; tables){
+                /*client.tables[table.definition.name] =*/ table.createClientSideTable(clientId);
             }
             //logInfo("mars - created %d client side tables", client.tables.length);
             // XXX questo è da ripensare con un meccanismo generico
@@ -151,7 +150,7 @@ class MarsServer
                    auto req = SyncOperationRequest();
                    req.syncOperation = 0;
                    foreach( table; tables ){
-                       auto clientTable = client.tables[table.definition.name];
+                       auto clientTable = table.clientSideTables[client.id];
                        //logInfo("mars - database operations for client %s table %s", client.id, table.definition.name);
                        foreach(op; clientTable.ops){
                            if( ! syncStarted ){
