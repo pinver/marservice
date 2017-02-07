@@ -28,6 +28,7 @@ void protoHelo(T)(T socket)
 
     // ... based on the client id, the server will instantiate or retrieve a client-side structure
     auto clientId = socket.receive();
+    import std.experimental.logger; trace("client id ricevutoooo:%d", clientId);
     assert(marsServer !is null);
     auto marsClient = marsServer.engageClient(clientId);
     auto reply = marsClient.reconnections.length > 1? "marsreconnected" : "marswelcome";

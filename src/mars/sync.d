@@ -22,10 +22,10 @@ class BaseServerSideTable(ClientT)
     }
 
     auto createClientSideTable(){
-        auto cst = new ClientSideTable();
+        auto cst = new ClientSideTable!ClientT();
         final switch(cst.strategy) with(Strategy) {
             case easilySyncAll:
-                ops ~= new ClientImportValues!ClientT();
+                cst.ops ~= new ClientImportValues!ClientT();
         }
         return cst;
     }
@@ -45,7 +45,7 @@ class BaseServerSideTable(ClientT)
     immutable Table definition;   
     private {
 
-        public SynOp!ClientT[] ops;
+        //public SynOp!ClientT[] ops;
 
     }
 }
@@ -93,11 +93,11 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     /// insert a new row in the server table, turning client table out of sync
-    void insertRow(ColumnsStruct fixture){
+    void insertRow(ColumnsStruct fixture, ClientT client){
         KeysStruct keys = pkValues!table(fixture);
         fixtures[keys] = fixture;
         toInsert[keys] = fixture;
-        ops ~= new ClientInsertValues!ClientT();
+        client.tables[table.name].ops ~= new ClientInsertValues!ClientT();
     }
 
     ColumnsStruct insertRecord(Database db, ColumnsStruct record){
@@ -118,7 +118,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     /// update row in the server table, turning the client table out of sync
-    void updateRow(KeysStruct keys, ColumnsStruct record){
+    void updateRow(KeysStruct keys, ColumnsStruct record, ClientT client){
         //KeysStruct keys = pkValues!table(record);
         auto v = keys in toInsert;
         if( v !is null ){ 
@@ -135,7 +135,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             }
         }
         fixtures[keys] = record;
-        ops ~= new ClientUpdateValues!ClientT();
+        client.tables[table.name].ops ~= new ClientUpdateValues!ClientT();
     }
 
     /// returns the packet selected rows
@@ -191,10 +191,11 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 }
 
 
-struct ClientSideTable
+struct ClientSideTable(ClientT)
 {
     private {
         Strategy strategy = Strategy.easilySyncAll;
+        public SynOp!ClientT[] ops;
     }
 }
 
@@ -203,14 +204,14 @@ private
     enum Strategy { easilySyncAll }
 
     class SynOp(MarsClientT) {
-        abstract void execute(MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst);
-        abstract void execute(Database db, MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst);
+        abstract void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst);
+        abstract void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst);
     }
 
     /// take all the rows in the server table and send them on the client table.
     class ClientImportValues(MarsClientT) : SynOp!MarsClientT {
         
-        override void execute(Database db, MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst)
+        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
         {
             assert(db !is null);
 
@@ -227,7 +228,7 @@ private
                 marsClient.sendRequest(req);
             }
         }
-        override void execute(MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst)
+        override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
         {
             import mars.msg : ImportValuesRequest;
             import std.conv : to;
@@ -246,7 +247,7 @@ private
 
     class ClientInsertValues(MarsClientT) : SynOp!MarsClientT {
         
-        override void execute(MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst)
+        override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
         {
             import mars.msg : InsertValuesRequest;
             import std.conv : to;
@@ -259,12 +260,12 @@ private
                 marsClient.sendRequest(req);
             }
         }
-        override void execute(Database db, MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst){}
+        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst){}
     }
 
     class ClientUpdateValues(MarsClientT) : SynOp!MarsClientT {
 
-        override void execute(MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst)
+        override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
         {
             import mars.msg : UpdateValuesRequest;
             import std.conv :to;
@@ -277,7 +278,7 @@ private
                 marsClient.sendRequest(req);
             }
         }
-        override void execute(Database db, MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst){}
+        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst){}
     }
 
     class ServerUpdateValues(MarsClientT) : SynOp!MarsClientT {
@@ -289,6 +290,7 @@ private
 
 unittest
 {
+    /+
     import std.range : zip;
 
     struct MarsClientMock { void sendRequest(R)(R r){} }
@@ -309,5 +311,6 @@ unittest
     // ...posso aggiornare uno dei valori con update, in questo caso la primary key è la colonna c1
     sst.updateRow(sst.KeysStruct(2), sst.ColumnsStruct(2, "z"));
     assert( sst.fixtures[sst.KeysStruct(2)] == sst.ColumnsStruct(2, "z") );
+    +/
 }
 

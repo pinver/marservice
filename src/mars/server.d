@@ -51,6 +51,7 @@ class MarsServer
 
     MarsClient* engageClient(string clientId)
     {
+        import std.experimental.logger; trace("clients? %s", marsClients.keys());
         auto client = clientId in marsClients;
         if( client is null ){
             marsClients[clientId] = MarsClient(clientId, configuration.databaseService);
@@ -150,16 +151,17 @@ class MarsServer
                    auto req = SyncOperationRequest();
                    req.syncOperation = 0;
                    foreach( table; tables ){
+                       auto clientTable = client.tables[table.definition.name];
                        //logInfo("mars - database operations for client %s table %s", client.id, table.definition.name);
-                       foreach(op; table.ops){
+                       foreach(op; clientTable.ops){
                            if( ! syncStarted ){
                                syncStarted = true; 
                                client.sendRequest(req);
                            }
                            //logInfo("mars - executing database operation for client %s", client.id);
-                           op.execute(client.db, &client, client.tables[table.definition.name], table);
+                           op.execute(client.db, &client, clientTable, table);
                        }
-                       table.ops = []; // XXX gestisci le singole failure...
+                       clientTable.ops = []; // XXX gestisci le singole failure...
                    }
                    if( syncStarted ){
                        req.syncOperation = 1;
