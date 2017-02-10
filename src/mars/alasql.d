@@ -90,11 +90,16 @@ string createTable(const(Schema) schema, const(Table) table)
     string cols = table.columns
         .map!( (c){ return c.asNameTypeNull; })
         .ctfeEnumerate
-        .map!(primaryKey!(EnumerateResult!(ulong, string)))
+        //.map!(primaryKey!(EnumerateResult!(ulong, string)))
         .map!(references!(EnumerateResult!(ulong, string)))
         .join(", ");
 
-    string sql = "create table " ~ table.name ~ " (" ~ cols ~ ")";
+    string primaryKeys = "";
+    if( table.primaryKey.length > 0 ){
+        primaryKeys = ", primary key (" ~ table.primaryKey.map!( i => table.columns[i].name ).join(", ") ~ ")";
+    }
+
+    string sql = "create table " ~ table.name ~ " (" ~ cols ~ primaryKeys ~ ")";
     return sql;
     
 }
@@ -104,15 +109,19 @@ unittest {
         immutable Table("bar2", [Col("foo", Type.text, false), Col("poo", Type.text, false)], [1], []),
         immutable Table("bar3", [Col("foo", Type.text, false)], [], [Reference([0], "bar2", [1])]),
         immutable Table("bar4", [Col("foo", Type.text, false), Col("bar", Type.text, false)], [], [Reference([0,1], "bar1", [0,1])]),
+        immutable Table("bar5", [Col("foo", Type.text, false), Col("bar", Type.text, false)], [0, 1], []),
         ]);
     
         string sql = sc.createTable(sc.tables[0]);
         assert(sql == "create table bar1 (foo text not null)", sql);
         sql = sc.createTable(sc.tables[1]);
-        assert(sql == "create table bar2 (foo text not null, poo text not null primary key)", sql);
+        assert(sql == "create table bar2 (foo text not null, poo text not null, primary key (poo))", sql);
         sql = sc.createTable(sc.tables[2]);
         assert(sql == "create table bar3 (foo text not null references bar2(poo))", sql);
-
+        sql = sc.createTable(sc.tables[3]);
+        assert(sql == "create table bar4 (foo text not null, bar text not null)", sql);
+        sql = sc.createTable(sc.tables[4]);
+        assert(sql == "create table bar5 (foo text not null, bar text not null, primary key (foo, bar))", sql);
 }
 
 string asNameTypeNull(const(Col) col)
