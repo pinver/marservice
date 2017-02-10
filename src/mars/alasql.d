@@ -70,6 +70,9 @@ string createTable(const(Schema) schema, const(Table) table)
         ulong i = t.index;
 
         foreach(reference; table.references){
+            // ... alasql 0.3.6 does not support references with multiple columns, so skip them.
+            if( reference.referenceCols.length > 1) continue;
+
             assert(reference.referenceCols.length == 1); // only one col in alasql references
             assert(reference.referencedCols.length == 1); // idem
             if( reference.referenceCols[0] == i ){
@@ -100,6 +103,7 @@ unittest {
         immutable Table("bar1", [ Col("foo", Type.text, false) ], [], [] ),
         immutable Table("bar2", [Col("foo", Type.text, false), Col("poo", Type.text, false)], [1], []),
         immutable Table("bar3", [Col("foo", Type.text, false)], [], [Reference([0], "bar2", [1])]),
+        immutable Table("bar4", [Col("foo", Type.text, false), Col("bar", Type.text, false)], [], [Reference([0,1], "bar1", [0,1])]),
         ]);
     
         string sql = sc.createTable(sc.tables[0]);
@@ -108,6 +112,7 @@ unittest {
         assert(sql == "create table bar2 (foo text not null, poo text not null primary key)", sql);
         sql = sc.createTable(sc.tables[2]);
         assert(sql == "create table bar3 (foo text not null references bar2(poo))", sql);
+
 }
 
 string asNameTypeNull(const(Col) col)
