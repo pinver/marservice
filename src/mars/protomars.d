@@ -11,6 +11,7 @@ import mars.msg;
 import mars.protoauth;
 import mars.protocallmethod;
 import mars.protoinsertvaluerequest;
+import mars.protodeleterecordrequest;
 
 void protoMars(S)(MarsClient* client, S socket_)
 {
@@ -62,6 +63,11 @@ void protoMars(S)(MarsClient* client, S socket_)
             case insertValuesRequest:
                 logInfo("mars - received an insertValueRequest");
                 protoInsertValueRequest(client, socket);
+                break;
+
+            case deleteRecordRequest:
+                logInfo("mars - received a deleteRecordRequest");
+                protoDeleteRecordRequest(client, socket);
                 break;
 
             default:

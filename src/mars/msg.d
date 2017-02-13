@@ -10,6 +10,7 @@ enum MsgType {
     importValuesRequest  = 22, importValuesReply,
     insertValuesRequest  = 24, insertValuesReply,
     updateValuesRequest  = 26, updateValuesReply,
+    deleteRecordRequest  = 28, deleteRecordReply,
 
     welcomeBroadcast = 100, goodbyBroadcast,
 
@@ -81,6 +82,17 @@ struct InsertValuesReply {
     immutable(ubyte)[] bytes = []; // the server inserted record
     immutable(ubyte)[] clientKeys = [];
     int statementIndex = -1; // the sql statement to use for emending the client with the server data
+}
+
+struct DeleteRecordRequest {
+    static immutable type = MsgType.deleteRecordRequest;
+    int statementIndex;
+    immutable(ubyte)[] bytes = []; 
+}
+
+struct DeleteRecordReply {
+    static immutable type =  MsgType.deleteRecordReply;
+    int fake;
 }
 
 struct UpdateValuesRequest {

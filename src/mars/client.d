@@ -113,7 +113,13 @@ struct MarsClient
         immutable(ubyte)[][2] inserted = marsServer.tables[statementIndex].insertRecord(db, record);
         return inserted;
     }
-    
+
+    immutable(ubyte)[] vueDeleteRecord(int tableIndex, immutable(ubyte)[] record){
+        trace("trace");
+        immutable(ubyte)[] deleted = marsServer.tables[tableIndex].deleteRecord(db, record);
+        return deleted;
+    }
+
     //ClientSideTable!(typeof(this)*)*[string] tables;
     private {
         string id_;

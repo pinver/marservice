@@ -22,6 +22,19 @@ unittest {
     assert( sql == "insert into bar values ($1, $2) returning *", sql );
 }
 
+string deleteFromParameter(const(Table) table)
+{
+    return "delete from %s where %s".format(
+            table.name, 
+            zip(iota(0, table.pkCols.length), table.pkCols)
+                .map!( (t) => t[1].name ~ " = $" ~ (t[0]+1).to!string)
+                .join(" and "));
+}
+unittest {
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("bar", Type.text, false), Col("baz", Type.text, false)], [0, 1], []).deleteFromParameter();
+    assert( sql == "delete from bar where foo = $1 and bar = $2", sql);
+}
+
 struct DatabaseService {
     string host;
     ushort port;
@@ -72,15 +85,39 @@ class Database
     auto executeQueryUnsafe(Row)(string sql){
         return conn.executeQuery!Row(sql);
     }
+    
     auto executeInsert(immutable(Table) table, Row)(Row record){
         enum sql = insertIntoReturningParameter(table);
         auto cmd = new PGCommand(conn, sql);
         static if( record.tupleof.length >= 1 ){ cmd.parameters.add(1, table.columns[0].type.toPGType).value = record.tupleof[0]; }
         static if( record.tupleof.length >= 2 ){ cmd.parameters.add(2, table.columns[1].type.toPGType).value = record.tupleof[1]; }
+        static if( record.tupleof.length >= 3 ){ cmd.parameters.add(3, table.columns[2].type.toPGType).value = record.tupleof[2]; }
+        static if( record.tupleof.length >= 4 ){ cmd.parameters.add(4, table.columns[3].type.toPGType).value = record.tupleof[3]; }
+        static if( record.tupleof.length >= 5 ){ cmd.parameters.add(5, table.columns[4].type.toPGType).value = record.tupleof[4]; }
+        static if( record.tupleof.length >= 6 ){ cmd.parameters.add(6, table.columns[5].type.toPGType).value = record.tupleof[5]; }
+        static if( record.tupleof.length >= 7 ){ cmd.parameters.add(7, table.columns[6].type.toPGType).value = record.tupleof[6]; }
+        static if( record.tupleof.length >= 8 ) static assert(false, record.tupleof.length);
         import std.experimental.logger; trace("ok, proviamo!!!!!");
-        Row result = cmd.executeQuery!Row().front;
+        auto querySet = cmd.executeQuery!Row();
+        scope(exit) querySet.close();
+        Row result = querySet.front;
         trace("ANDATA??? MARO!!!");
         return result;
+    }
+
+    void executeDelete(immutable(Table) table, Pk)(Pk pk){
+        enum sql = deleteFromParameter(table);
+        auto cmd = new PGCommand(conn, sql);
+        static if( pk.tupleof.length >= 1 ){ cmd.parameters.add(1, table.pkCols[0].type.toPGType).value = pk.tupleof[0]; }
+        static if( pk.tupleof.length >= 2 ){ cmd.parameters.add(2, table.pkCols[1].type.toPGType).value = pk.tupleof[1]; }
+        static if( pk.tupleof.length >= 3 ){ cmd.parameters.add(3, table.pkCols[2].type.toPGType).value = pk.tupleof[2]; }
+        static if( pk.tupleof.length >= 4 ){ cmd.parameters.add(4, table.pkCols[3].type.toPGType).value = pk.tupleof[3]; }
+        static if( pk.tupleof.length >= 5 ){ cmd.parameters.add(5, table.pkCols[4].type.toPGType).value = pk.tupleof[4]; }
+        static if( pk.tupleof.length >= 6 ){ cmd.parameters.add(6, table.pkCols[5].type.toPGType).value = pk.tupleof[5]; }
+        static if( pk.tupleof.length >= 7 ) static assert(false, pk.tupleof.length);
+        import std.experimental.logger; trace("ok, proviamo il delete");
+        cmd.executeNonQuery();
+        trace("andata??? direi di si!");
     }
 
     private {

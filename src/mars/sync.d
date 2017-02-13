@@ -45,8 +45,9 @@ class BaseServerSideTable(ClientT)
     abstract immutable(ubyte)[] packRowsToUpdate();
 
     abstract immutable(ubyte)[][2] insertRecord(Database, immutable(ubyte)[]);
+    abstract immutable(ubyte)[]    deleteRecord(Database, immutable(ubyte)[]);
 
-    immutable Table definition;   
+    immutable Table definition; 
     private {
 
         /// Every server table has a collection of the linked client side tables. The key element is the identifier of
@@ -127,13 +128,26 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         return [inserted.pack!(true).idup, inserted.pkValues!table().pack!(true).idup];
     }
 
+    override immutable(ubyte)[] deleteRecord(Database db, immutable(ubyte)[] data){
+        import msgpack : pack, unpack;
+        asStruct!table record = unpack!(ColumnsStruct, true)(data);
+        KeysStruct keys = record.pkValues!table();
+        deleteRecord(db, keys);
+        return [];
+    }
+
+    immutable(ubyte)[] deleteRecord(Database db, KeysStruct keys){
+        db.executeDelete!(table, KeysStruct)(keys);
+        return [];
+    }
+
     /// update row in the server table, turning the client tables out of sync
     void updateRow(KeysStruct keys, ColumnsStruct record){
         //KeysStruct keys = pkValues!table(record);
         auto v = keys in toInsert;
         if( v !is null ){ 
             *v = record;
-           assert( (keys in toUpdate) is null ); 
+            assert( (keys in toUpdate) is null ); 
         }
         else {
             v = keys in toUpdate;
