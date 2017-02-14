@@ -112,19 +112,19 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     ColumnsStruct insertRecord(Database db, ColumnsStruct record){
-        trace("trace");
         auto inserted = db.executeInsert!(table, ColumnsStruct)(record);
-        trace("trace");
+        KeysStruct keys = pkValues!table(record);
+        toInsert[keys] = record;
+        foreach(ref cst; clientSideTables.values){
+            cst.ops ~= new ClientInsertValues!ClientT();
+        }
         return inserted;
     }
 
     override immutable(ubyte)[][2] insertRecord(Database db, immutable(ubyte)[] data){
         import  msgpack : pack, unpack;
-        trace("trace");
         ColumnsStruct record = unpack!(ColumnsStruct, true)(data);
-        trace("trace");
         ColumnsStruct inserted = insertRecord(db, record);
-        trace("trace");
         return [inserted.pack!(true).idup, inserted.pkValues!table().pack!(true).idup];
     }
 
@@ -159,6 +159,29 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             }
         }
         fixtures[keys] = record;
+        foreach(ref cst; clientSideTables.values){
+            cst.ops ~= new ClientUpdateValues!ClientT();
+        }
+    }
+
+    void updateRow(Database db, KeysStruct keys, ColumnsStruct record){
+        import msgpack : pack;
+
+        db.executeUpdate!(table, KeysStruct, ColumnsStruct)(keys, record);
+        auto v = keys in toInsert;
+        if( v !is null ){ 
+            *v = record;
+            assert( (keys in toUpdate) is null ); 
+        }
+        else {
+            v = keys in toUpdate;
+            if( v !is null ){
+                *v = record;
+            }
+            else {
+                toUpdate[keys] = record;
+            }
+        }
         foreach(ref cst; clientSideTables.values){
             cst.ops ~= new ClientUpdateValues!ClientT();
         }
@@ -315,12 +338,15 @@ private
     }
 }
 
+version(unittest)
+{
+    struct MarsClientMock { void sendRequest(R)(R r){} }
+}
 unittest
 {
     /+
     import std.range : zip;
 
-    struct MarsClientMock { void sendRequest(R)(R r){} }
     
     auto t1 = immutable(Table)("t1", [Col("c1", Type.integer, false), Col("c2", Type.text, false)], [0], []);
     auto sst = new ServerSideTable!(MarsClientMock, t1);
@@ -340,4 +366,27 @@ unittest
     assert( sst.fixtures[sst.KeysStruct(2)] == sst.ColumnsStruct(2, "z") );
     +/
 }
+/+
+unittest
+{
+    import mars.swar;
+    enum schema = starwarSchema();
+
+    auto people = new ServerSideTable!(MarsClientMock, schema.tables[0]);
+    auto luke = people.ColumnsStruct("Luke", "male", [0xDE, 0xAD, 0xBE, 0xEF]); 
+    auto leila = people.ColumnsStruct("Leila", "female", [0xCA, 0xFE, 0xBA, 0xBE]);    
+    auto databaseService = DatabaseService("127.0.0.1", 5432, "starwars");
+    auto db = databaseService.connect("jedi", "force");
+
+    auto rows = people.selectRows(db);
+    assert( rows[0] == luke );
+    
+    auto inserted = people.insertRecord(db, leila);
+    assert( inserted == leila );
+
+    //import std.stdio;
+    //foreach(row; rows) writeln("---->>>>>", row);
+    //assert(false);
+}
++/
 

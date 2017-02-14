@@ -35,6 +35,19 @@ unittest {
     assert( sql == "delete from bar where foo = $1 and bar = $2", sql);
 }
 
+string updateFromParameters(const(Table) table)
+{
+    immutable(Col)[] whereCols = table.pkCols.length >0? table.pkCols : table.columns;
+    int dollarIndex =1;
+    return "update %s set %s where %s".format(
+        table.name,
+        table.columns.map!( (t) => t.name ~ " = $" ~ (dollarIndex++).to!string).join(", "),
+        whereCols.map!( (t) => t.name ~ " = $" ~ (dollarIndex++).to!string).join(" and "));
+}
+unittest {
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("bar", Type.text, false), Col("baz", Type.text, false)], [0], []).updateFromParameters();
+    assert( sql == "update bar set foo = $1, bar = $2, baz = $3 where foo = $4", sql );
+}
 struct DatabaseService {
     string host;
     ushort port;
@@ -120,6 +133,31 @@ class Database
         trace("andata??? direi di si!");
     }
 
+    void executeUpdate(immutable(Table) table, Pk, Row)(Pk pk, Row record){
+        enum sql = updateFromParameters(table);
+        auto cmd = new PGCommand(conn, sql);
+        short i = 1;
+        static if( record.tupleof.length >= 1 ){ cmd.parameters.add(i++, table.columns[0].type.toPGType).value = record.tupleof[0]; }
+        static if( record.tupleof.length >= 2 ){ cmd.parameters.add(i++, table.columns[1].type.toPGType).value = record.tupleof[1]; }
+        static if( record.tupleof.length >= 3 ){ cmd.parameters.add(i++, table.columns[2].type.toPGType).value = record.tupleof[2]; }
+        static if( record.tupleof.length >= 4 ){ cmd.parameters.add(i++, table.columns[3].type.toPGType).value = record.tupleof[3]; }
+        static if( record.tupleof.length >= 5 ){ cmd.parameters.add(i++, table.columns[4].type.toPGType).value = record.tupleof[4]; }
+        static if( record.tupleof.length >= 6 ){ cmd.parameters.add(i++, table.columns[5].type.toPGType).value = record.tupleof[5]; }
+        static if( record.tupleof.length >= 7 ){ cmd.parameters.add(i++, table.columns[6].type.toPGType).value = record.tupleof[6]; }
+        static if( record.tupleof.length >= 8 ) static assert(false, record.tupleof.length);
+
+        static if( pk.tupleof.length >= 1 ){ cmd.parameters.add(i++, table.pkCols[0].type.toPGType).value = pk.tupleof[0]; }
+        static if( pk.tupleof.length >= 2 ){ cmd.parameters.add(i++, table.pkCols[1].type.toPGType).value = pk.tupleof[1]; }
+        static if( pk.tupleof.length >= 3 ){ cmd.parameters.add(i++, table.pkCols[2].type.toPGType).value = pk.tupleof[2]; }
+        static if( pk.tupleof.length >= 4 ){ cmd.parameters.add(i++, table.pkCols[3].type.toPGType).value = pk.tupleof[3]; }
+        static if( pk.tupleof.length >= 5 ){ cmd.parameters.add(i++, table.pkCols[4].type.toPGType).value = pk.tupleof[4]; }
+        static if( pk.tupleof.length >= 6 ){ cmd.parameters.add(i++, table.pkCols[5].type.toPGType).value = pk.tupleof[5]; }
+        static if( pk.tupleof.length >= 7 ){ static assert(false, pk.tupleof.length); }
+        import std.experimental.logger; trace("proviamo l'update pg...");
+        cmd.executeNonQuery();
+        trace("andato l'update pg? direi di si!");
+    }
+
     private {
         PostgresDB db;
         PGConnection conn;
@@ -139,7 +177,7 @@ private {
             case text: return PGType.TEXT;
             case real_: return PGType.FLOAT4;
             case doublePrecision: return PGType.FLOAT8;
-
+            case bytea: return PGType.BYTEA;
             case smallserial: return PGType.INT2; // XXX check
 
             case unknown:
@@ -151,12 +189,13 @@ private {
     }
 
     version(unittest){
-        auto starwarSchema() pure {
+        /+auto starwarSchema() pure {
             return immutable(Schema)("sw", [
                 immutable(Table)("people", [Col("name", Type.text), Col("gender", Type.text)], [0], []),
                 immutable(Table)("species", [Col("name", Type.text)], [0], []),
         ]);
-        }
+        }+/
+        import mars.swar;
     }
     string select(const(Select) stat){
         return `select %s from %s`.format(
@@ -171,11 +210,11 @@ private {
     }
 
     unittest {
-        /+enum pub = starwarSchema();
-        enum tokens = scan("select foo from bar");
+        enum pub = starwarSchema();
+        enum tokens = scan("select name from sw.people");
         static const stat = Parser([pub], tokens).parse();
-        auto db = new Database("127.0.0.1", "pinver", "pinver", "");
-        db.execute(cast(Select)stat);+/
+        auto db = new Database("127.0.0.1", "starwars", "jedi", "force");
+        db.execute(cast(Select)stat);
     }
 }
 

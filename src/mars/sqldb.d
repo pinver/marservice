@@ -190,7 +190,7 @@ struct Parser
             advance(); advance();
         }
         auto sc = schemas.find!"a.name == b"(schemaName);
-        if(sc.length ==0) throw new Exception("no schema named "~schemaName);
+        if(sc.length ==0) throw new Exception("no schema named "~schemaName~". Available schemas are:"~schemas.map!("a.name")().join(" "));
         auto ta = sc[0].tables.find!"a.name == b"(t.v);
         if(ta.length ==0) throw new Exception("no table "~t.v~" in schema "~schemaName);
         s.tables ~= ta[0];

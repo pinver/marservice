@@ -145,6 +145,7 @@ string toSql(Type t){
         case text: return "text";
         case real_: return "real";
         case doublePrecision: return "double precision";
+        case bytea: return "text";
 
         // right now handle as a smallint, insert client side not implemented right now
         case smallserial: return "smallint";
