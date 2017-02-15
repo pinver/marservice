@@ -109,7 +109,10 @@ class Database
         static if( record.tupleof.length >= 5 ){ cmd.parameters.add(5, table.columns[4].type.toPGType).value = record.tupleof[4]; }
         static if( record.tupleof.length >= 6 ){ cmd.parameters.add(6, table.columns[5].type.toPGType).value = record.tupleof[5]; }
         static if( record.tupleof.length >= 7 ){ cmd.parameters.add(7, table.columns[6].type.toPGType).value = record.tupleof[6]; }
-        static if( record.tupleof.length >= 8 ) static assert(false, record.tupleof.length);
+        static if( record.tupleof.length >= 8 ){ cmd.parameters.add(8, table.columns[7].type.toPGType).value = record.tupleof[7]; }
+        static if( record.tupleof.length >= 9 ){ cmd.parameters.add(9, table.columns[8].type.toPGType).value = record.tupleof[8]; }
+        static if( record.tupleof.length >=10 ){ cmd.parameters.add(10, table.columns[9].type.toPGType).value = record.tupleof[9]; }
+        static if( record.tupleof.length >=11 ) static assert(false, record.tupleof.length);
         import std.experimental.logger; trace("ok, proviamo!!!!!");
         auto querySet = cmd.executeQuery!Row();
         scope(exit) querySet.close();

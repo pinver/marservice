@@ -208,13 +208,16 @@ auto pkValues(alias table)(asStruct!table fixture)
     asPkStruct!table keys;
     // XXX fix with recursion
     static if(table.primaryKey.length == 0){
-        static assert(keys.tupleof.length <=6, keys.tupleof.length);
+        static assert(keys.tupleof.length <=9, keys.tupleof.length);
         static if(keys.tupleof.length == 1){ keys.tupleof[0] = fixture.tupleof[0]; }
         static if(keys.tupleof.length == 2){ keys.tupleof[1] = fixture.tupleof[1]; }
         static if(keys.tupleof.length == 3){ keys.tupleof[2] = fixture.tupleof[2]; }
         static if(keys.tupleof.length == 4){ keys.tupleof[3] = fixture.tupleof[3]; }
         static if(keys.tupleof.length == 5){ keys.tupleof[4] = fixture.tupleof[4]; }
-        static if(keys.tupleof.length == 5){ keys.tupleof[5] = fixture.tupleof[5]; }
+        static if(keys.tupleof.length == 6){ keys.tupleof[5] = fixture.tupleof[5]; }
+        static if(keys.tupleof.length == 7){ keys.tupleof[6] = fixture.tupleof[6]; }
+        static if(keys.tupleof.length == 8){ keys.tupleof[7] = fixture.tupleof[7]; }
+        static if(keys.tupleof.length == 9){ keys.tupleof[8] = fixture.tupleof[8]; }
     }
     else static if(table.primaryKey.length == 1){
         keys.tupleof[0] = fixture.tupleof[table.primaryKey[0]];
