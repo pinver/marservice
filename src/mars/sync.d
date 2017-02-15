@@ -17,6 +17,8 @@ import mars.pgsql;
 
 class BaseServerSideTable(ClientT)
 {
+    alias ClientType = ClientT;
+
     this(immutable(Table) definition){
         this.definition = definition;
     }
@@ -366,27 +368,28 @@ unittest
     assert( sst.fixtures[sst.KeysStruct(2)] == sst.ColumnsStruct(2, "z") );
     +/
 }
-/+
 unittest
 {
-    import mars.swar;
-    enum schema = starwarSchema();
+    version(starwars){
+        import mars.starwars;
+        enum schema = starwarsSchema();
 
-    auto people = new ServerSideTable!(MarsClientMock, schema.tables[0]);
-    auto luke = people.ColumnsStruct("Luke", "male", [0xDE, 0xAD, 0xBE, 0xEF]); 
-    auto leila = people.ColumnsStruct("Leila", "female", [0xCA, 0xFE, 0xBA, 0xBE]);    
-    auto databaseService = DatabaseService("127.0.0.1", 5432, "starwars");
-    auto db = databaseService.connect("jedi", "force");
+        auto people = new ServerSideTable!(MarsClientMock, schema.tables[0]);
+        auto databaseService = DatabaseService("127.0.0.1", 5432, "starwars");
+        auto db = databaseService.connect("jedi", "force");
+        db.executeUnsafe("begin transaction");
+        
+        auto rows = people.selectRows(db);
+        assert( rows[0] == luke );
 
-    auto rows = people.selectRows(db);
-    assert( rows[0] == luke );
-    
-    auto inserted = people.insertRecord(db, leila);
-    assert( inserted == leila );
-
-    //import std.stdio;
-    //foreach(row; rows) writeln("---->>>>>", row);
-    //assert(false);
+        auto paolo = Person("Paolo", "male", [0x00, 0x01, 0x02, 0x03, 0x04]);
+        auto inserted = people.insertRecord(db, paolo);
+        assert(inserted == paolo);
+        
+        //import std.stdio;
+        //foreach(row; rows) writeln("---->>>>>", row);
+        //assert(false);
+    }
 }
-+/
+
 

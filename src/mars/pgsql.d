@@ -195,7 +195,7 @@ private {
                 immutable(Table)("species", [Col("name", Type.text)], [0], []),
         ]);
         }+/
-        import mars.swar;
+        import mars.starwars;
     }
     string select(const(Select) stat){
         return `select %s from %s`.format(
@@ -204,13 +204,13 @@ private {
             );
     }
     unittest {
-        auto s = starwarSchema();
+        auto s = starwarsSchema();
         const sql = cast(Select)Parser([s], scan("select name from sw.people")).parse();
         assert(select(sql) == "select name from people", select(sql));
     }
 
     unittest {
-        enum pub = starwarSchema();
+        enum pub = starwarsSchema();
         enum tokens = scan("select name from sw.people");
         static const stat = Parser([pub], tokens).parse();
         auto db = new Database("127.0.0.1", "starwars", "jedi", "force");
