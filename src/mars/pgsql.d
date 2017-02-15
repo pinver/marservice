@@ -130,7 +130,10 @@ class Database
         static if( pk.tupleof.length >= 4 ){ cmd.parameters.add(4, table.pkCols[3].type.toPGType).value = pk.tupleof[3]; }
         static if( pk.tupleof.length >= 5 ){ cmd.parameters.add(5, table.pkCols[4].type.toPGType).value = pk.tupleof[4]; }
         static if( pk.tupleof.length >= 6 ){ cmd.parameters.add(6, table.pkCols[5].type.toPGType).value = pk.tupleof[5]; }
-        static if( pk.tupleof.length >= 7 ) static assert(false, pk.tupleof.length);
+        static if( pk.tupleof.length >= 7 ){ cmd.parameters.add(7, table.pkCols[6].type.toPGType).value = pk.tupleof[6]; }
+        static if( pk.tupleof.length >= 8 ){ cmd.parameters.add(8, table.pkCols[7].type.toPGType).value = pk.tupleof[7]; }
+        static if( pk.tupleof.length >= 9 ){ cmd.parameters.add(9, table.pkCols[8].type.toPGType).value = pk.tupleof[8]; }
+        static if( pk.tupleof.length >= 10 ) static assert(false, pk.tupleof.length);
         import std.experimental.logger; trace("ok, proviamo il delete");
         cmd.executeNonQuery();
         trace("andata??? direi di si!");
@@ -147,7 +150,9 @@ class Database
         static if( record.tupleof.length >= 5 ){ cmd.parameters.add(i++, table.columns[4].type.toPGType).value = record.tupleof[4]; }
         static if( record.tupleof.length >= 6 ){ cmd.parameters.add(i++, table.columns[5].type.toPGType).value = record.tupleof[5]; }
         static if( record.tupleof.length >= 7 ){ cmd.parameters.add(i++, table.columns[6].type.toPGType).value = record.tupleof[6]; }
-        static if( record.tupleof.length >= 8 ) static assert(false, record.tupleof.length);
+        static if( record.tupleof.length >= 8 ){ cmd.parameters.add(i++, table.columns[7].type.toPGType).value = record.tupleof[7]; }
+        static if( record.tupleof.length >= 9 ){ cmd.parameters.add(i++, table.columns[8].type.toPGType).value = record.tupleof[8]; }
+        static if( record.tupleof.length >= 10 ) static assert(false, record.tupleof.length);
 
         static if( pk.tupleof.length >= 1 ){ cmd.parameters.add(i++, table.pkCols[0].type.toPGType).value = pk.tupleof[0]; }
         static if( pk.tupleof.length >= 2 ){ cmd.parameters.add(i++, table.pkCols[1].type.toPGType).value = pk.tupleof[1]; }
@@ -155,7 +160,10 @@ class Database
         static if( pk.tupleof.length >= 4 ){ cmd.parameters.add(i++, table.pkCols[3].type.toPGType).value = pk.tupleof[3]; }
         static if( pk.tupleof.length >= 5 ){ cmd.parameters.add(i++, table.pkCols[4].type.toPGType).value = pk.tupleof[4]; }
         static if( pk.tupleof.length >= 6 ){ cmd.parameters.add(i++, table.pkCols[5].type.toPGType).value = pk.tupleof[5]; }
-        static if( pk.tupleof.length >= 7 ){ static assert(false, pk.tupleof.length); }
+        static if( pk.tupleof.length >= 7 ){ cmd.parameters.add(i++, table.pkCols[6].type.toPGType).value = pk.tupleof[6]; }
+        static if( pk.tupleof.length >= 8 ){ cmd.parameters.add(i++, table.pkCols[7].type.toPGType).value = pk.tupleof[7]; }
+        static if( pk.tupleof.length >= 9 ){ cmd.parameters.add(i++, table.pkCols[8].type.toPGType).value = pk.tupleof[8]; }
+        static if( pk.tupleof.length >= 10){ static assert(false, pk.tupleof.length); }
         import std.experimental.logger; trace("proviamo l'update pg...");
         cmd.executeNonQuery();
         trace("andato l'update pg? direi di si!");
