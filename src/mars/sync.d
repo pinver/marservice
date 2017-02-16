@@ -382,7 +382,7 @@ unittest
         auto rows = people.selectRows(db);
         assert( rows[0] == luke );
 
-        auto paolo = Person("Paolo", "male", [0x00, 0x01, 0x02, 0x03, 0x04]);
+        auto paolo = Person("Paolo", "male", [0x00, 0x01, 0x02, 0x03, 0x04], 1.80);
         auto inserted = people.insertRecord(db, paolo);
         assert(inserted == paolo);
         
