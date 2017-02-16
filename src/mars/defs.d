@@ -113,7 +113,16 @@ struct Reference {
     size_t[] referencedCols;
 }
 
-enum Type { unknown, date, doublePrecision, integer, real_, boolean, smallint, smallserial, serial, text, varchar, bytea }
+enum Type { 
+    unknown, 
+    boolean,
+    date, 
+    real_, doublePrecision, 
+    smallint, integer, bigint, // 16, 32, 64 bit, postgresql
+    smallserial, serial, 
+    text, varchar,
+    bytea 
+}
 
 /**
  * returns the D type for the passed SQL type. */
@@ -121,6 +130,7 @@ template asD(alias t) if( is(Unqual!(typeof(t)) == Type) )
 {
 
     static if( t == Type.integer )              alias asD = int;
+    else static if( t == Type.bigint )          alias asD = long;
     else static if( t == Type.text )            alias asD = string;
     else static if( t == Type.serial )          alias asD = int;
     else static if( t == Type.boolean )         alias asD = bool;

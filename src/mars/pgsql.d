@@ -184,6 +184,7 @@ private {
         final switch(t) with(Type) {
             case boolean: return PGType.BOOLEAN;
             case integer: return PGType.INT4; // XXX check
+            case bigint: return PGType.INT8;
             case smallint: return PGType.INT2; // XXX check 
             case text: return PGType.TEXT;
             case real_: return PGType.FLOAT4;
@@ -223,6 +224,14 @@ private {
     unittest {
         enum pub = starwarsSchema();
         enum tokens = scan("select name from sw.people");
+        static const stat = Parser([pub], tokens).parse();
+        auto db = new Database("127.0.0.1", "starwars", "jedi", "force");
+        db.execute(cast(Select)stat);
+    }
+    unittest {
+        // check bigint select
+        enum pub = starwarsSchema();
+        enum tokens = scan("select population from sw.planets");
         static const stat = Parser([pub], tokens).parse();
         auto db = new Database("127.0.0.1", "starwars", "jedi", "force");
         db.execute(cast(Select)stat);

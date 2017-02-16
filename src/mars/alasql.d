@@ -141,6 +141,7 @@ string toSql(Type t){
     final switch(t) with(Type) {
         case boolean: return "boolean";
         case integer: return "integer";
+        case bigint: return "integer";
         case smallint: return "smallint"; 
         case text: return "text";
         case real_: return "real";
