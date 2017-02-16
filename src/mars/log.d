@@ -24,9 +24,11 @@ class MarsLogger : Logger
 
     }
 }
+/*
 shared static this(){
     import vibe.core.log;
 
     shared static l = new MarsLogger();
     registerLogger(l);
 }
+*/
