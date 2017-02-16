@@ -5,6 +5,7 @@ import std.datetime,
        std.experimental.logger;
 
 import vibe.core.log;
+import vibe.data.json;
 
 import mars.msg;
 import mars.server;
@@ -101,7 +102,7 @@ struct MarsClient
     bool authorised() { return this.username != ""; }
     string id() { return id_; }
     
-    string callServerMethod(string method, string parameters){
+    string callServerMethod(string method, Json parameters){
         if( serverSideMethods !is null ){
             return serverSideMethods(this, method, parameters);
         }

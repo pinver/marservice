@@ -108,7 +108,7 @@ struct UpdateValuesReply {
 
 struct CallServerMethodRequest {
     static immutable type = MsgType.callServerMethodRequest;
-    string method; string parameters;
+    string method; immutable(ubyte)[] parameters;
 }
 
 struct CallServerMethodReply {

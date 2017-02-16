@@ -1,13 +1,29 @@
 
 
 
-//import ;
 
 int main()
 {
+    import std.format;
+    import mars.server, mars.client;
     import vibe.core.core : runApplication;
 
+    import vibe.data.json : Json;
+
+    string exposedMethods(MarsClient marsClient, string methodName, Json parameters){
+        switch(methodName){
+            case "methodA": 
+                int i = parameters["i"].get!int;
+                return "responseA_%d".format(++i);
+            default: return "unknownMethod";
+        }
+    }
+
+    enum marsConf = MarsServerConfiguration();
+    marsServer = new MarsServer(marsConf);
+    marsServer.serverSideMethods = &exposedMethods;
     setupWebSocketServer();
+
     return runApplication();
 }
 
