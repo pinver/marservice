@@ -251,6 +251,13 @@ auto pkValues(alias table)(asStruct!table fixture)
         keys.tupleof[2] = fixture.tupleof[table.primaryKey[2]];
         keys.tupleof[3] = fixture.tupleof[table.primaryKey[3]];
     }
+    else static if(table.primaryKey.length == 5){
+        keys.tupleof[0] = fixture.tupleof[0];
+        keys.tupleof[1] = fixture.tupleof[table.primaryKey[1]];
+        keys.tupleof[2] = fixture.tupleof[table.primaryKey[2]];
+        keys.tupleof[3] = fixture.tupleof[table.primaryKey[3]];
+        keys.tupleof[4] = fixture.tupleof[table.primaryKey[4]];
+    }
     else static assert(false);
     return keys;
 }
