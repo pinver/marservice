@@ -5,7 +5,7 @@
 int main()
 {
     import std.format;
-    import mars.server, mars.client;
+    import mars.server, mars.client, mars.starwars;
     import vibe.core.core : runApplication;
 
     import vibe.data.json : Json;
@@ -19,9 +19,15 @@ int main()
         }
     }
 
-    enum marsConf = MarsServerConfiguration();
+    enum marsConf = MarsServer
+        .ExposeSchema(starwarsSchema())
+        .PostgreSQL("127.0.0.1", 5432, "starwars")
+        .Autologin("jedi", "force")
+        ;
     marsServer = new MarsServer(marsConf);
     marsServer.serverSideMethods = &exposedMethods;
+    enum ctTables = marsConf.schemaExposed.tables;
+    InstantiateTables!(ctTables)(marsServer, [], [], [], []);
     setupWebSocketServer();
 
     return runApplication();

@@ -6,6 +6,7 @@ import std.meta;
 import std.traits;
 import std.algorithm;
 import std.array;
+import std.typecons;
 
 /+
 struct Schema2 
@@ -37,6 +38,7 @@ auto table(Schema2 schema, string name){
 enum ss = schema("foo");
 enum s2 = schema("foo").table("bar");
 +/
+
 struct Schema {
     string name;
     immutable(Table)[] tables;
@@ -62,6 +64,8 @@ struct Table {
     size_t[] primaryKey;
     Reference[] references;
     size_t index; /// the unique index of the table in the system.
+    bool durable = true;
+
     immutable(Schema)* schema;
 
     /*

@@ -22,6 +22,10 @@ void protoMars(S)(MarsClient* client, S socket_)
     // ... client must be wired to this socket, to be able to 'broadcast' or 'push' message to the browser ...
     client.wireSocket(socket);
 
+    // ... now the procol between client and server is fully operative, inform the server
+    assert(marsServer !is null); 
+    marsServer.onMarsProtocolReady(client);
+
     while(true)
     {
         auto msgType = socket.receiveType();

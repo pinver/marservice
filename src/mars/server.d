@@ -77,6 +77,23 @@ class MarsServer
         client.disconnected();
     }
 
+    // The mars protocol has completed the handshake and setup, request can be sent and received.
+    /// Called by 'protomars'  module.
+    void onMarsProtocolReady(MarsClient* client){
+
+        //... connect to the DB if autologin is enabled server side
+        if( configuration.pgsqlUser != "" ){
+            bool dbAuthorised = client.authoriseUser(configuration.pgsqlUser, configuration.pgsqlPassword);
+            if( ! dbAuthorised ) throw new Exception("Server autologin enabled, but can't authorise with psql");
+            auto reply = AuthenticateReply(0);
+            reply.sqlCreateDatabase = configuration.alasqlCreateDatabase;
+            reply.sqlStatements = configuration.alasqlStatements;
+            logInfo("S --> C | authenticate reply, autologin for %s", configuration.pgsqlUser);
+            client.sendBroadcast(reply);
+        }
+        startDatabaseHandler();
+    }
+
 
     void broadcast(M)(M message)
     {
@@ -99,7 +116,6 @@ class MarsServer
         assert(marsServer is null);
         marsServer = this;
         configuration = c;
-        startDatabaseHandler();
     }
 
 
@@ -188,16 +204,23 @@ struct MarsServerConfiguration
     immutable(string)[] alasqlStatements;
     immutable string[] serverMethods;
 
+    
     immutable DatabaseService databaseService;
+
+    string pgsqlUser, pgsqlPassword; // for autologin
 }
 
 static MarsServerConfiguration ExposeServerMethods(MarsServerConfiguration c, const string[] methods){
     return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, methods.idup,
-            c.databaseService);
+            c.databaseService, c.pgsqlUser, c.pgsqlPassword);
 }
 
 MarsServerConfiguration PostgreSQL(MarsServerConfiguration c, const string host, const ushort port, const string db){
     return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.serverMethods,
-            DatabaseService(host, port, db));
+            DatabaseService(host, port, db), c.pgsqlUser, c.pgsqlPassword);
 }
 
+MarsServerConfiguration Autologin(MarsServerConfiguration c, const string login, const string password){
+    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.serverMethods, c.databaseService,
+        login, password);
+}

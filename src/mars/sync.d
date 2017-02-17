@@ -75,36 +75,51 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     // interface needed to handle the records in a generic way ...
 
     /// returns the total number of records we are 'talking on' (filters? query?)
-    override size_t count() const { return fixtures.length; }
-    override size_t count(Database db) const { return db.executeScalarUnsafe!size_t("select count(*) from %s".format(table.name)); } 
-    override size_t countRowsToInsert() const { return toInsert.length; }
-    override size_t countRowsToUpdate() const { return toUpdate.length; }
-    
+    deprecated override size_t count() const { return fixtures.length; }
+    override size_t count(Database db) const {
+        static if( table.durable ){
+            return db.executeScalarUnsafe!size_t("select count(*) from %s".format(table.name));
+        }
+        else {
+            return fixtures.length;
+        }
+    }
+    //static if( ! table.durable ){ // XXX
+        override size_t countRowsToInsert() const { return toInsert.length; }
+        override size_t countRowsToUpdate() const { return toUpdate.length; }
+    //}
+
     /// return the unique index identifier for this table, that's coming from the table definition in the app.d
     override size_t index() const { return Definition.index; }
 
     /// returns 'limit' rows starting from 'offset'.
-    auto selectRows(size_t offset = 0, size_t limit = long.max) const {
+    deprecated auto selectRows(size_t offset = 0, size_t limit = long.max) const  {
         size_t till  = (limit + offset) > count ? count : (limit + offset);
         return fixtures.values()[offset .. till];
     }
-    /// idem
+    /// returns 'limit' rows starting from 'offset'.
     auto selectRows(Database db, size_t offset = 0, size_t limit = long.max) const {
-        auto resultSet = db.executeQueryUnsafe!(asStruct!table)("select * from %s limit %d offset %d".format(
-            table.name, limit, offset)
-        );
-        asStruct!table[] rows;
-        foreach(v; resultSet){
-            rows ~= v;
-            import std.stdio; writeln("selectRows:", v);
-            // XXX
+        static if(table.durable){
+            auto resultSet = db.executeQueryUnsafe!(asStruct!table)("select * from %s limit %d offset %d".format(
+                table.name, limit, offset)
+            );
+            asStruct!table[] rows;
+            foreach(v; resultSet){
+                rows ~= v;
+                import std.stdio; writeln("selectRows:", v);
+                // XXX
+            }
+            resultSet.close();
+            return rows;
         }
-        resultSet.close();
-        return rows;
+        else {
+            size_t till  = (limit + offset) > count ? count : (limit + offset);
+            return fixtures.values()[offset .. till];
+        }
     }
 
     /// insert a new row in the server table, turning clients table out of sync
-    void insertRow(ColumnsStruct fixture){
+    deprecated void insertRow(ColumnsStruct fixture){
         KeysStruct keys = pkValues!table(fixture);
         fixtures[keys] = fixture;
         toInsert[keys] = fixture;
@@ -113,10 +128,19 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         }
     }
 
+    /// insert a new row in the server table, turning clients table out of sync
     ColumnsStruct insertRecord(Database db, ColumnsStruct record){
-        auto inserted = db.executeInsert!(table, ColumnsStruct)(record);
-        KeysStruct keys = pkValues!table(record);
-        toInsert[keys] = record;
+        static if(table.durable){
+            auto inserted = db.executeInsert!(table, ColumnsStruct)(record);
+            KeysStruct keys = pkValues!table(record);
+            toInsert[keys] = record;
+        }
+        else {
+            auto inserted = record;
+            KeysStruct keys = pkValues!table(record);
+            fixtures[keys] = record;
+            toInsert[keys] = record;
+        }
         foreach(ref cst; clientSideTables.values){
             cst.ops ~= new ClientInsertValues!ClientT();
         }
@@ -139,12 +163,18 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     immutable(ubyte)[] deleteRecord(Database db, KeysStruct keys){
-        db.executeDelete!(table, KeysStruct)(keys);
+        static if(table.durable){
+            db.executeDelete!(table, KeysStruct)(keys);
+        }
+        else {
+            fixtures.remove(keys);
+            //toDelete[keys] = 0;
+        }
         return [];
     }
 
     /// update row in the server table, turning the client tables out of sync
-    void updateRow(KeysStruct keys, ColumnsStruct record){
+    deprecated void updateRow(KeysStruct keys, ColumnsStruct record){
         //KeysStruct keys = pkValues!table(record);
         auto v = keys in toInsert;
         if( v !is null ){ 
@@ -166,23 +196,44 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         }
     }
 
+    /// update row in the server table, turning the client tables out of sync
     void updateRow(Database db, KeysStruct keys, ColumnsStruct record){
-        import msgpack : pack;
+        static if( table.durable ){
+            import msgpack : pack;
 
-        db.executeUpdate!(table, KeysStruct, ColumnsStruct)(keys, record);
-        auto v = keys in toInsert;
-        if( v !is null ){ 
-            *v = record;
-            assert( (keys in toUpdate) is null ); 
-        }
-        else {
-            v = keys in toUpdate;
-            if( v !is null ){
+            db.executeUpdate!(table, KeysStruct, ColumnsStruct)(keys, record);
+            auto v = keys in toInsert;
+            if( v !is null ){ 
                 *v = record;
+                assert( (keys in toUpdate) is null ); 
             }
             else {
-                toUpdate[keys] = record;
+                v = keys in toUpdate;
+                if( v !is null ){
+                    *v = record;
+                }
+                else {
+                    toUpdate[keys] = record;
+                }
             }
+        }
+        else {
+            //KeysStruct keys = pkValues!table(record);
+            auto v = keys in toInsert;
+            if( v !is null ){ 
+                *v = record;
+                assert( (keys in toUpdate) is null ); 
+            }
+            else {
+                v = keys in toUpdate;
+                if( v !is null ){
+                    *v = record;
+                }
+                else {
+                    toUpdate[keys] = record;
+                }
+            }
+            fixtures[keys] = record;
         }
         foreach(ref cst; clientSideTables.values){
             cst.ops ~= new ClientUpdateValues!ClientT();
@@ -218,7 +269,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         foreach(r; toUpdate.keys){
             records ~= UpdateRecord(r, toUpdate[r]);
         }
-            
+
         import msgpack : pack;
         auto packed = pack!(true)(records).idup;
         toUpdate = null;
@@ -236,10 +287,12 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         toUpdate = null;
     }
 
-    asStruct!(table)[asPkStruct!(table)] fixtures;
-    asStruct!(table)[asPkStruct!(table)] toInsert;
-    asStruct!(table)[asPkStruct!(table)] toUpdate;
-
+    //static if( ! table.durable ){
+        asStruct!(table)[asPkStruct!(table)] fixtures;
+        asStruct!(table)[asPkStruct!(table)] toInsert;
+        asStruct!(table)[asPkStruct!(table)] toUpdate;
+        asStruct!(table)[asPkStruct!(table)] toDelete;
+    //}
 }
 
 
@@ -262,7 +315,7 @@ private
 
     /// take all the rows in the server table and send them on the client table.
     class ClientImportValues(MarsClientT) : SynOp!MarsClientT {
-        
+
         override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
         {
             assert(db !is null);
@@ -375,6 +428,7 @@ unittest
         enum schema = starwarsSchema();
 
         auto people = new ServerSideTable!(MarsClientMock, schema.tables[0]);
+        auto scores = new ServerSideTable!(MarsClientMock, schema.tables[3]);
         auto databaseService = DatabaseService("127.0.0.1", 5432, "starwars");
         auto db = databaseService.connect("jedi", "force");
         db.executeUnsafe("begin transaction");
@@ -386,6 +440,7 @@ unittest
         auto inserted = people.insertRecord(db, paolo);
         assert(inserted == paolo);
         
+
         //import std.stdio;
         //foreach(row; rows) writeln("---->>>>>", row);
         //assert(false);
