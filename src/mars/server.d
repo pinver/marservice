@@ -15,6 +15,7 @@ import mars.pgsql;
 import mars.msg;
 
 import vibe.core.log;
+import vibe.data.json;
 
 void InstantiateTables(alias tables, F...)(MarsServer m, F fixtures) {
     static assert( tables.length > 0 && fixtures.length > 0, "every table must have at least an empty fixtures array"); 
@@ -91,7 +92,7 @@ class MarsServer
         }
     }
 
-    string delegate(MarsClient, string, string) serverSideMethods;
+    string delegate(MarsClient, string, Json) serverSideMethods;
 
     // ================
     this(immutable(MarsServerConfiguration) c){
