@@ -8,6 +8,8 @@ import std.string;
 import std.range;
 
 import mars.defs;
+import mars.msg : AuthoriseError;
+
 import ddb.postgres;
 import ddb.db;
 import vibe.core.log;
@@ -48,22 +50,40 @@ unittest {
     auto sql = Table("bar", [Col("foo", Type.text, false), Col("bar", Type.text, false), Col("baz", Type.text, false)], [0], []).updateFromParameters();
     assert( sql == "update bar set foo = $1, bar = $2, baz = $3 where foo = $4", sql );
 }
+
 struct DatabaseService {
     string host;
     ushort port;
     string database;
-
+ 
     /**
-     * Returns: an instance of `Database` of null if can't connect or authenticate */
-    Database connect(string user, string password){
+     * Returns: an instance of `Database` of null if can't connect or authenticate. Errors details in 'err' */
+    Database connect(string user, string password, ref AuthoriseError err) in {
+        assert(user && password);
+    } body {
         Database db;
         try {
             db = new Database(host, database, user, password);
+            err = AuthoriseError.authorised;
+        }
+        catch(ServerErrorException e){
+            switch(e.code){
+                case "28P01": // password authentication failed for user "user"
+                    logInfo("PostgreSQL password authentication failed for user");
+                    err = AuthoriseError.wrongUsernameOrPassword;
+                    break;
+                default:
+                    logWarn("S -- C | Unhandled PostgreSQL server error during connection!");
+                    logInfo("S --- C | PostgreSQL server error: %s", e.toString);
+                    err = AuthoriseError.unknownError;
+            }
         }
         catch(Exception e){
             logWarn("S --- C | exception connecting to the PostgreSQL!");
             logWarn("S --- C | %s", e);
+            err = AuthoriseError.unknownError;
         }
+        assert( err != AuthoriseError.assertCheck);
         return db;
     }
 }

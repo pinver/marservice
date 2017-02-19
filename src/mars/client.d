@@ -83,19 +83,20 @@ struct MarsClient
      * Called by the authentication protocol.
      * 
      * Returns: false if PostgreSQL is offline or user in not authorised, or true. */
-    bool authoriseUser(string username, string pgpassword) {
+    AuthoriseError authoriseUser(string username, string pgpassword) in {
+        assert(username && pgpassword);
+    } body {
         this.username = username;
-            if( databaseService.host != "" ){
-            db = databaseService.connect(username, pgpassword);
-            if( db is null ){
-                logWarn("S --- C | the database is offline, can't authorise");
-                return false;
-            }
+
+        AuthoriseError err;
+        if( databaseService.host == "" ){
+            logWarn("S --- C | the database host is not specified, we are operating in offline mode");
+            err = AuthoriseError.authorised;
         }
         else {
-            logWarn("S --- C | the database host is not specified, we are operating in offline mode");
+            db = databaseService.connect(username, pgpassword, err );
         }
-        return true;
+        return err;
     }
     void discardAuthorisation() { this.username = ""; }
 
@@ -110,13 +111,11 @@ struct MarsClient
     }
 
     immutable(ubyte)[][2] vueInsertRecord(int statementIndex, immutable(ubyte)[] record){
-        trace("trace");
         immutable(ubyte)[][2] inserted = marsServer.tables[statementIndex].insertRecord(db, record);
         return inserted;
     }
 
     immutable(ubyte)[] vueDeleteRecord(int tableIndex, immutable(ubyte)[] record){
-        trace("trace");
         immutable(ubyte)[] deleted = marsServer.tables[tableIndex].deleteRecord(db, record);
         return deleted;
     }

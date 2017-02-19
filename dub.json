@@ -9,11 +9,12 @@
     "buildRequirements": ["silenceDeprecations"],
     "dependencies": 
     {
-        "vibe-d:core": "~>0.7.30",
-        "vibe-d:http": "~>0.7.30",
+        "vibe-d:core": "0.7.30",
+        "vibe-d:http": "0.7.30",
         "ddb": "~>0.2.5",
         "msgpack-d": "~>1.0.0-beta.5"
     },
 
+    "versions": ["starwars"],
     "subConfigurations": { "vibe-d:core": "libasync" }
 }

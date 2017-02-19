@@ -49,7 +49,7 @@ auto serverSideTable(immutable(Table) table)(MarsServer m){
 
 class MarsServer
 {
-
+    /// Register the client between the connected clients
     MarsClient* engageClient(string clientId)
     {
         import std.experimental.logger; trace("clients? %s", marsClients.keys());
@@ -57,14 +57,6 @@ class MarsServer
         if( client is null ){
             marsClients[clientId] = MarsClient(clientId, configuration.databaseService);
             client = clientId in marsClients;
-
-            // ... the tables that are exposed in the schema ...
-            foreach(ref table; tables){
-                /*client.tables[table.definition.name] =*/ table.createClientSideTable(clientId);
-            }
-            //logInfo("mars - created %d client side tables", client.tables.length);
-            // XXX questo è da ripensare con un meccanismo generico
-            client.serverSideMethods = this.serverSideMethods;
         }
         assert( client !is null );
         client.connected();
@@ -77,14 +69,27 @@ class MarsServer
         client.disconnected();
     }
 
+    /// Create the server side tables for the client, preparing the initial sync op.
+    /// Callee: protoauth.
+    void createClientSideTablesFor(MarsClient* client){
+        // ... the tables that are exposed in the schema ...
+        foreach(ref table; tables){
+            /*client.tables[table.definition.name] =*/ table.createClientSideTable(client.id);
+        }
+        //logInfo("mars - created %d client side tables", client.tables.length);
+        // XXX questo è da ripensare con un meccanismo generico
+        client.serverSideMethods = this.serverSideMethods;
+    }
+
     // The mars protocol has completed the handshake and setup, request can be sent and received.
     /// Called by 'protomars'  module.
     void onMarsProtocolReady(MarsClient* client){
 
         //... connect to the DB if autologin is enabled server side
         if( configuration.pgsqlUser != "" ){
-            bool dbAuthorised = client.authoriseUser(configuration.pgsqlUser, configuration.pgsqlPassword);
-            if( ! dbAuthorised ) throw new Exception("Server autologin enabled, but can't authorise with psql");
+            auto dbAuthorised = client.authoriseUser(configuration.pgsqlUser, configuration.pgsqlPassword);
+            if( dbAuthorised != AuthoriseError.authorised ) 
+                throw new Exception("Server autologin enabled, but can't authorise with postgreSQL");
             auto reply = AuthenticateReply(0);
             reply.sqlCreateDatabase = configuration.alasqlCreateDatabase;
             reply.sqlStatements = configuration.alasqlStatements;

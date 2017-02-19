@@ -21,32 +21,47 @@ void protoAuth(S)(MarsClient* client, S socket)
     auto authenticationRequest = socket.binaryAs!AuthenticationRequest;
     string username = authenticationRequest.username;
 
+    // empty username, not allowed ...
+    if( username == "" ){
+        socket.sendReply(authenticationRequest, AuthenticationReply(AuthenticationReply.invalidUsername));
+        return;
+    }
+
     auto seed = letters.length
         .iota
         .randomSample(10)
         .map!( i => letters[i] )
         .array;
-    socket.sendReply(authenticationRequest, AuthenticationReply(seed));
-
+    socket.sendReply(authenticationRequest, AuthenticationReply(AuthenticationReply.seedProvided, seed));
     auto authenticateRequest = socket.receiveMsg!AuthenticateRequest;
     logInfo("S <-- C | authenticate request, hash:%s", authenticateRequest.hash);
-    logInfo("password hash:%s", sha256Of("password").toHexString());
-    string hash256 = sha256Of(seed ~ sha256Of("password").toHexString()).toHexString();
-    bool authorised = authenticateRequest.hash.toUpper() == hash256;
-    
-    string pgPassword = "postgres";
-    if( username == "pinver" ) pgPassword = "foaloke,"; // XXX 
-    bool dbAuthorised = client.authoriseUser(username, pgPassword); 
-    //logInfo("client authorised? %s", authorised); 
 
-    auto reply = AuthenticateReply(! authorised);
-    reply.sqlCreateDatabase = marsServer.configuration.alasqlCreateDatabase;
-    reply.sqlStatements = marsServer.configuration.alasqlStatements;
-    logInfo("S --> C | authenticate reply, authorised:%s", authorised);
+    // ... right now, we can't pass the hash to postgres, so ...
+    string hash256, password = "password";
+    if     ( username == "dev"    ){ password = "password"; }
+    else if( username == "pinver" ){ password = "arathorn"; }
+    else if( username == "elisa"  ){ password = "seta"; }
+    else if( username == "chiara" ){ password = "velluto"; }
+
+    bool authorised = authenticateRequest.hash.toUpper() == sha256Of(seed ~ sha256Of(password).toHexString()).toHexString();
+
+    AuthoriseError dbAuthorised = client.authoriseUser(username, password);
+
+    auto reply = AuthenticateReply(cast(int)dbAuthorised, "", []);
+
+    if( dbAuthorised == AuthoriseError.authorised ){
+        reply.sqlCreateDatabase = marsServer.configuration.alasqlCreateDatabase;
+        reply.sqlStatements = marsServer.configuration.alasqlStatements;
+
+        // ... now that the client is authorised, expose the data to it
+        marsServer.createClientSideTablesFor(client);
+    }
+
+    logInfo("S --> C | authenticate reply, authorised:%s", dbAuthorised);
     socket.sendReply(authenticateRequest, reply);
 
     // ... try the push from the server, a new client has connected ...
-    marsServer.broadcast(WelcomeBroadcast(username));
+    if(dbAuthorised == AuthoriseError.authorised) marsServer.broadcast(WelcomeBroadcast(username));
 }
 
 void protoDeauth(S)(MarsClient* client, S socket)

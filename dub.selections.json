@@ -1,11 +1,11 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"ddb": "~master",
-		"diet-ng": "1.1.1",
+		"ddb": "0.2.6",
+		"diet-ng": "1.1.3",
 		"libasync": "0.7.9",
 		"libevent": "2.0.2+2.0.16",
-		"memutils": "0.4.8",
+		"memutils": "0.4.9",
 		"msgpack-d": "1.0.0-beta.6",
 		"openssl": "1.1.5+1.0.1g",
 		"vibe-d": "0.7.30"

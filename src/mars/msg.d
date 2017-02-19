@@ -26,7 +26,9 @@ struct AuthenticationRequest {
 }
 
 struct AuthenticationReply {
+    enum { seedProvided, invalidUsername }
     static immutable type = MsgType.authenticationReply;
+    int status;
     string seed;
 }
 
@@ -35,6 +37,15 @@ struct AuthenticateRequest {
     string hash;
 }
 
+/// Warning, this enum is checked in the client also!
+enum AuthoriseError {
+    assertCheck,
+
+    authorised,              
+    databaseOffline,         /// the database is offline, so can't autorise
+    wrongUsernameOrPassword, /// password authentication failed for user "user"
+    unknownError,            /// unknown or not handled error code.
+}
 struct AuthenticateReply {
     static immutable type = MsgType.authenticateReply;
     int status;

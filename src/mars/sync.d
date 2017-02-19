@@ -148,8 +148,16 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     override immutable(ubyte)[][2] insertRecord(Database db, immutable(ubyte)[] data){
-        import  msgpack : pack, unpack;
-        ColumnsStruct record = unpack!(ColumnsStruct, true)(data);
+        import  msgpack : pack, unpack, MessagePackException;
+        ColumnsStruct record;
+        try {
+            record = unpack!(ColumnsStruct, true)(data);
+        }
+        catch(MessagePackException exc){
+            errorf("mars - failed to unpack record to insert in '%s': maybe a wrong type of data in js", table.name);
+            errorf(exc.toString);
+            return [[], []];
+        }
         ColumnsStruct inserted = insertRecord(db, record);
         return [inserted.pack!(true).idup, inserted.pkValues!table().pack!(true).idup];
     }
