@@ -146,7 +146,9 @@ string toSql(Type t){
         case text: return "text";
         case real_: return "real";
         case doublePrecision: return "double precision";
-        case bytea: return "text";
+        // ... this is not really supported by alasql, as in javascript we are using 'Buffer', but actually the javascript code
+        //     doesn't perform any check for unknown type, so ...
+        case bytea: return "bytea";
 
         // right now handle as a smallint, insert client side not implemented right now
         case smallserial: return "smallint";
