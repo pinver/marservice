@@ -7,7 +7,7 @@ module mars.starwars;
 
     auto starwarsSchema() pure {
         return immutable(Schema)("sw", [
-                immutable(Table)("people", [Col("name", Type.text), Col("gender", Type.text), Col("photo", Type.bytea), Col("height", Type.real_)], [0], [], 0),
+                immutable(Table)("people", [Col("name", Type.text), Col("gender", Type.text), Col("photo", Type.bytea), Col("height", Type.doublePrecision)], [0], [], 0),
                 immutable(Table)("species", [Col("name", Type.text)], [0], [], 1),
                 immutable(Table)("planets", [Col("name", Type.text), Col("population", Type.bigint)], [0], [], 2),
                 immutable(Table)("scores", [Col("score", Type.integer)], [], [], 3, No.durable),
