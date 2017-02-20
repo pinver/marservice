@@ -14,6 +14,8 @@ import std.format;
 
 import mars.defs;
 import mars.pgsql;
+import mars.msg : InsertError;
+import mars.server : indexStatementFor;
 
 class BaseServerSideTable(ClientT)
 {
@@ -46,7 +48,7 @@ class BaseServerSideTable(ClientT)
     abstract immutable(ubyte)[] packRowsToInsert();
     abstract immutable(ubyte)[] packRowsToUpdate();
 
-    abstract immutable(ubyte)[][2] insertRecord(Database, immutable(ubyte)[]);
+    abstract immutable(ubyte)[][2] insertRecord(Database, immutable(ubyte)[], ref InsertError);
     abstract immutable(ubyte)[]    deleteRecord(Database, immutable(ubyte)[]);
 
     immutable Table definition; 
@@ -120,7 +122,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 
     /// insert a new row in the server table, turning clients table out of sync
     deprecated void insertRow(ColumnsStruct fixture){
-        KeysStruct keys = pkValues!table(fixture);
+        KeysStruct keys = pkValues!(table)(fixture);
         fixtures[keys] = fixture;
         toInsert[keys] = fixture;
         foreach(ref cst; clientSideTables.values){
@@ -129,9 +131,9 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     /// insert a new row in the server table, turning clients table out of sync
-    ColumnsStruct insertRecord(Database db, ColumnsStruct record){
+    ColumnsStruct insertRecord(Database db, ColumnsStruct record, ref InsertError err){
         static if(table.durable){
-            auto inserted = db.executeInsert!(table, ColumnsStruct)(record);
+            auto inserted = db.executeInsert!(table, ColumnsStruct)(record, err);
             KeysStruct keys = pkValues!table(record);
             toInsert[keys] = record;
         }
@@ -147,7 +149,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         return inserted;
     }
 
-    override immutable(ubyte)[][2] insertRecord(Database db, immutable(ubyte)[] data){
+    override immutable(ubyte)[][2] insertRecord(Database db, immutable(ubyte)[] data, ref InsertError err){
         import  msgpack : pack, unpack, MessagePackException;
         ColumnsStruct record;
         try {
@@ -156,10 +158,14 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         catch(MessagePackException exc){
             errorf("mars - failed to unpack record to insert in '%s': maybe a wrong type of data in js", table.name);
             errorf(exc.toString);
+            err = InsertError.unknownError;
             return [[], []];
         }
-        ColumnsStruct inserted = insertRecord(db, record);
-        return [inserted.pack!(true).idup, inserted.pkValues!table().pack!(true).idup];
+        ColumnsStruct inserted = insertRecord(db, record, err);
+        return [
+            inserted.pack!(true).idup, 
+            record.pkParamValues!table().pack!(true).idup // clientKeys
+            ];
     }
 
     override immutable(ubyte)[] deleteRecord(Database db, immutable(ubyte)[] data){
@@ -336,7 +342,7 @@ private
                 auto payload = sst.packRows(db);
 
                 auto req = ImportValuesRequest();
-                req.statementIndex = sst.index.to!int *2;
+                req.statementIndex = indexStatementFor(sst.index, "insert").to!int;
                 req.bytes = payload;
                 marsClient.sendRequest(req);
             }
@@ -351,7 +357,7 @@ private
                 auto payload = sst.packRows();
 
                 auto req = ImportValuesRequest();
-                req.statementIndex = sst.index.to!int *2;
+                req.statementIndex = indexStatementFor(sst.index, "insert").to!int;
                 req.bytes = payload;
                 marsClient.sendRequest(req);
             }
@@ -368,7 +374,7 @@ private
             if( sst.countRowsToInsert > 0 ){
                 auto payload = sst.packRowsToInsert();
                 auto req = InsertValuesRequest();
-                req.statementIndex = sst.index.to!int *2;
+                req.statementIndex = indexStatementFor(sst.index, "insert").to!int;
                 req.bytes = payload;
                 marsClient.sendRequest(req);
             }
@@ -386,7 +392,7 @@ private
             if( sst.countRowsToUpdate > 0 ){
                 auto payload = sst.packRowsToUpdate();
                 auto req = UpdateValuesRequest();
-                req.statementIndex = sst.index.to!int *2 +1;
+                req.statementIndex = indexStatementFor(sst.index, "update").to!int;
                 req.bytes = payload;
                 marsClient.sendRequest(req);
             }
@@ -445,7 +451,8 @@ unittest
         assert( rows[0] == luke );
 
         auto paolo = Person("Paolo", "male", [0x00, 0x01, 0x02, 0x03, 0x04], 1.80);
-        auto inserted = people.insertRecord(db, paolo);
+        InsertError err;
+        auto inserted = people.insertRecord(db, paolo, err);
         assert(inserted == paolo);
         
 

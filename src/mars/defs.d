@@ -175,17 +175,17 @@ static assert( is(asD!( [Col("c", Type.integer), Col("d", Type.text)] ) == Alias
 
 /** 
  * returns the D type and the name of the column. */
-private template asStruct_(alias c) if( is(Unqual!(typeof(c)) : immutable(Col)[]) || is(Unqual!(typeof(c)) : Col[]) )
+private template asStruct_(alias c, string prefix ="") if( is(Unqual!(typeof(c)) : immutable(Col)[]) || is(Unqual!(typeof(c)) : Col[]) )
 {
 
     enum cols = c;
     static if(cols.length == 1){
         alias t = asD!(cols[0]);
         enum string n = cols[0].name;
-        enum string asStruct_ = t.stringof ~ " " ~ n ~ ";"; //AliasSeq!(asD!(cols[0])););
+        enum string asStruct_ = t.stringof ~ " " ~ prefix ~ n ~ ";"; //AliasSeq!(asD!(cols[0])););
     }
     else static if(cols.length >1){
-        enum string asStruct_ = (asD!(cols[0])).stringof ~ " " ~ cols[0].name ~ "; " ~ asStruct_!(cols[1 .. $]);
+        enum string asStruct_ = (asD!(cols[0])).stringof ~ " " ~ prefix ~ cols[0].name ~ "; " ~ asStruct_!(cols[1 .. $]);
     }
     else static assert(false, cols.length);
 }
@@ -215,11 +215,73 @@ template asPkStruct(alias t)
 }
 static assert(is(asPkStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [0], [])) == struct ));
 
+template asPkParamStruct(alias t)
+{
+    static if( t.pkCols.length >0 ){
+        enum cols = t.pkCols;
+    }
+    else {
+        enum cols = t.columns;
+    }
+    enum string structName = t.name ~ "PkRow";
+    enum string def = "struct " ~ structName ~ " {" ~ asStruct_!(cols, "key") ~ "}";
+    mixin(def ~"; alias asPkParamStruct = " ~ structName ~ ";");
+}
+static assert(is(asPkStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [0], [])) == struct ));
+
+
 /**
  * returns the values of the primary keys of this table row. */
 auto pkValues(alias table)(asStruct!table fixture)
 {
     asPkStruct!table keys;
+    // XXX fix with recursion
+    static if(table.primaryKey.length == 0){
+        static assert(keys.tupleof.length <=9, keys.tupleof.length);
+        static if(keys.tupleof.length == 1){ keys.tupleof[0] = fixture.tupleof[0]; }
+        static if(keys.tupleof.length == 2){ keys.tupleof[1] = fixture.tupleof[1]; }
+        static if(keys.tupleof.length == 3){ keys.tupleof[2] = fixture.tupleof[2]; }
+        static if(keys.tupleof.length == 4){ keys.tupleof[3] = fixture.tupleof[3]; }
+        static if(keys.tupleof.length == 5){ keys.tupleof[4] = fixture.tupleof[4]; }
+        static if(keys.tupleof.length == 6){ keys.tupleof[5] = fixture.tupleof[5]; }
+        static if(keys.tupleof.length == 7){ keys.tupleof[6] = fixture.tupleof[6]; }
+        static if(keys.tupleof.length == 8){ keys.tupleof[7] = fixture.tupleof[7]; }
+        static if(keys.tupleof.length == 9){ keys.tupleof[8] = fixture.tupleof[8]; }
+    }
+    else static if(table.primaryKey.length == 1){
+        keys.tupleof[0] = fixture.tupleof[table.primaryKey[0]];
+    }
+    else static if(table.primaryKey.length == 2){
+        keys.tupleof[0] = fixture.tupleof[0];
+        keys.tupleof[1] = fixture.tupleof[table.primaryKey[1]];
+    }
+    else static if(table.primaryKey.length == 3){
+        keys.tupleof[0] = fixture.tupleof[0];
+        keys.tupleof[1] = fixture.tupleof[table.primaryKey[1]];
+        keys.tupleof[2] = fixture.tupleof[table.primaryKey[2]];
+    }
+    else static if(table.primaryKey.length == 4){
+        keys.tupleof[0] = fixture.tupleof[0];
+        keys.tupleof[1] = fixture.tupleof[table.primaryKey[1]];
+        keys.tupleof[2] = fixture.tupleof[table.primaryKey[2]];
+        keys.tupleof[3] = fixture.tupleof[table.primaryKey[3]];
+    }
+    else static if(table.primaryKey.length == 5){
+        keys.tupleof[0] = fixture.tupleof[0];
+        keys.tupleof[1] = fixture.tupleof[table.primaryKey[1]];
+        keys.tupleof[2] = fixture.tupleof[table.primaryKey[2]];
+        keys.tupleof[3] = fixture.tupleof[table.primaryKey[3]];
+        keys.tupleof[4] = fixture.tupleof[table.primaryKey[4]];
+    }
+    else static assert(false);
+    return keys;
+}
+
+/**
+ * returns the values of the primary keys of this table row. */
+auto pkParamValues(alias table)(asStruct!table fixture)
+{
+    asPkParamStruct!table keys;
     // XXX fix with recursion
     static if(table.primaryKey.length == 0){
         static assert(keys.tupleof.length <=9, keys.tupleof.length);

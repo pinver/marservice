@@ -110,8 +110,8 @@ struct MarsClient
         assert(false); // catch on server side;
     }
 
-    immutable(ubyte)[][2] vueInsertRecord(int statementIndex, immutable(ubyte)[] record){
-        immutable(ubyte)[][2] inserted = marsServer.tables[statementIndex].insertRecord(db, record);
+    immutable(ubyte)[][2] vueInsertRecord(int statementIndex, immutable(ubyte)[] record, ref InsertError err){
+        immutable(ubyte)[][2] inserted = marsServer.tables[statementIndex].insertRecord(db, record, err);
         return inserted;
     }
 

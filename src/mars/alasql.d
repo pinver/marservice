@@ -4,6 +4,7 @@ module mars.alasql;
 
 import std.algorithm;
 import std.array;
+import std.conv;
 import std.format;
 import std.range;
 
@@ -42,6 +43,28 @@ string updateParameter(const(Table) table)
 unittest {
     auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).updateParameter;
     assert( sql == "update bar set foo = $foo, baz = $baz where foo = $keyfoo", sql );
+}
+
+string deleteFromParameter(const(Table) table)
+{
+    if( table.pkCols.length >0 ){
+        return "delete from %s where %s"
+            .format(
+                    table.name,
+                    table.pkCols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+                   );
+    }
+    else {
+        return "delete from %s where %s"
+            .format(
+                    table.name,
+                    table.columns.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+                   );
+    }
+}
+unittest {
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).deleteParameter;
+    assert( sql == "delete from bar where foo = $keyfoo", sql );
 }
 
 string createDatabase(const(Schema) schema)

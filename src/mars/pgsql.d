@@ -8,7 +8,7 @@ import std.string;
 import std.range;
 
 import mars.defs;
-import mars.msg : AuthoriseError;
+import mars.msg : AuthoriseError, InsertError;
 
 import ddb.postgres;
 import ddb.db;
@@ -119,25 +119,29 @@ class Database
         return conn.executeQuery!Row(sql);
     }
     
-    auto executeInsert(immutable(Table) table, Row)(Row record){
+    auto executeInsert(immutable(Table) table, Row, )(Row record, ref InsertError err){
         enum sql = insertIntoReturningParameter(table);
         auto cmd = new PGCommand(conn, sql);
         
         addParameters!table(cmd, record);
-        /+static if( record.tupleof.length >= 1 ){ cmd.parameters.add(1, table.columns[0].type.toPGType).value = record.tupleof[0]; }
-        static if( record.tupleof.length >= 2 ){ cmd.parameters.add(2, table.columns[1].type.toPGType).value = record.tupleof[1]; }
-        static if( record.tupleof.length >= 3 ){ cmd.parameters.add(3, table.columns[2].type.toPGType).value = record.tupleof[2]; }
-        static if( record.tupleof.length >= 4 ){ cmd.parameters.add(4, table.columns[3].type.toPGType).value = record.tupleof[3]; }
-        static if( record.tupleof.length >= 5 ){ cmd.parameters.add(5, table.columns[4].type.toPGType).value = record.tupleof[4]; }
-        static if( record.tupleof.length >= 6 ){ cmd.parameters.add(6, table.columns[5].type.toPGType).value = record.tupleof[5]; }
-        static if( record.tupleof.length >= 7 ){ cmd.parameters.add(7, table.columns[6].type.toPGType).value = record.tupleof[6]; }
-        static if( record.tupleof.length >= 8 ){ cmd.parameters.add(8, table.columns[7].type.toPGType).value = record.tupleof[7]; }
-        static if( record.tupleof.length >= 9 ){ cmd.parameters.add(9, table.columns[8].type.toPGType).value = record.tupleof[8]; }
-        static if( record.tupleof.length >=10 ){ cmd.parameters.add(10, table.columns[9].type.toPGType).value = record.tupleof[9]; }
-        static if( record.tupleof.length >=11 ) static assert(false, record.tupleof.length);+/
-        auto querySet = cmd.executeQuery!Row();
-        scope(exit) querySet.close();
-        Row result = querySet.front;
+        Row result;
+        try {
+            auto querySet = cmd.executeQuery!Row();
+            scope(exit) querySet.close();
+            result = querySet.front;
+            err = InsertError.inserted;
+        }
+        catch(ServerErrorException e){
+            switch(e.code){
+                case "23505": //  duplicate key value violates unique constraint "<constraintname>" (for example in primary keys)
+                    err = InsertError.duplicateKeyViolations;
+                    break;
+                default:
+                    logWarn("S -- C | Unhandled PostgreSQL server error during insertion!");
+                    logInfo("S --- C | PostgreSQL server error: %s", e.toString);
+                    err = InsertError.unknownError;
+            }
+        }
         return result;
     }
 
@@ -192,6 +196,7 @@ class Database
         PGConnection conn;
     }
 }
+
 
 private {
     import mars.lexer;

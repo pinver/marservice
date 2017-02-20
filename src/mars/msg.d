@@ -87,9 +87,15 @@ struct InsertValuesRequest {
     immutable(ubyte)[] bytes;
 }
 
+enum InsertError {
+    assertCheck,
+    inserted,
+    duplicateKeyViolations,
+    unknownError,
+}
 struct InsertValuesReply {
     static immutable type = MsgType.insertValuesReply;
-    int donno;
+    int insertStatus; // the insert error
     immutable(ubyte)[] bytes = []; // the server inserted record
     immutable(ubyte)[] clientKeys = [];
     int statementIndex = -1; // the sql statement to use for emending the client with the server data

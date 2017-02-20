@@ -124,15 +124,15 @@ class MarsServer
     }
 
 
-
     static MarsServerConfiguration ExposeSchema(immutable(Schema) schema)
     {
-        import mars.alasql : createDatabase, insertIntoParameter, updateParameter;
+        import mars.alasql : createDatabase, insertIntoParameter, updateParameter, deleteFromParameter;
         
         immutable(string)[] statements;
         foreach(table; schema.tables){
             statements ~= table.insertIntoParameter;
             statements ~= table.updateParameter;
+            statements ~= table.deleteFromParameter;
         }
         return MarsServerConfiguration( schema, createDatabase(schema), statements );    
     }
@@ -199,6 +199,14 @@ class MarsServer
 
 }
 __gshared MarsServer marsServer;
+
+ulong indexStatementFor(ulong table, string op){
+    enum ops = 3;
+     if     (op == "insert"){ return table * ops + 0; }
+    else  if(op == "update"){ return table * ops + 1; }
+    else  if(op == "delete"){ return table * ops + 2; }
+     assert(false, "unknown ops!");
+}
 
 struct MarsServerConfiguration
 {
