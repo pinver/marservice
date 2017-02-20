@@ -34,48 +34,48 @@ void protoMars(S)(MarsClient* client, S socket_)
         switch(msgType) with(MsgType)
         {
             case authenticationRequest:
-                logInfo("mars - received an authenticationRequest");
+                logInfo("mars - S<--%s - received an authenticationRequest", client.id);
                 protoAuth(client, socket);
                 break;
 
             case discardAuthenticationRequest:
-                logInfo("mars - received a discardAuthenticationRequest");
+                logInfo("mars - S<--%s - received a discardAuthenticationRequest", client.id);
                 protoDeauth(client, socket);
                 break;
 
             case syncOperationReply:
-                logInfo("mars - received a syncOperationReply");
+                logInfo("mars - S<--%s - received a syncOperationReply", client.id);
                 break;
 
             case importValuesReply:
-                logInfo("mars - received an importValuesReply");
+                logInfo("mars - S<--%s - received an importValuesReply", client.id);
                 break;
 
             case insertValuesReply:
-                logInfo("mars - received an insertValuesReply");
+                logInfo("mars - S<--%s - received an insertValuesReply", client.id);
                 break;
 
             case updateValuesReply:
-                logInfo("mars - received an updateValuesReply");
+                logInfo("mars - S<--%s - received an updateValuesReply", client.id);
                 break;
 
             case callServerMethodRequest:
-                logInfo("mars - received a callServerMethodRequest");
+                logInfo("mars - S<--%s - received a callServerMethodRequest", client.id);
                 protoCallServerMathod(client, socket);
                 break;
 
             case insertValuesRequest:
-                logInfo("mars - received an insertValueRequest");
+                logInfo("mars - S<--%s - received an insertValueRequest", client.id);
                 protoInsertValueRequest(client, socket);
                 break;
 
             case deleteRecordRequest:
-                logInfo("mars - received a deleteRecordRequest");
+                logInfo("mars - S<--%s - received a deleteRecordRequest", client.id);
                 protoDeleteRecordRequest(client, socket);
                 break;
 
             default:
-                logInfo("mars - received a message of type %s, skipping!", msgType);
+                logInfo("mars - S<--%s - received a message of type %s, skipping!", client.id, msgType);
                 assert(false);
         }
     }
@@ -123,24 +123,22 @@ struct MarsProxy(S)
 
     ReceivedMessage!M binaryAs(M)(){
         import std.experimental.logger;
-        trace("trace");
         auto msg = binary.unpack!(M, true);
-        trace("trace");
         return ReceivedMessage!M(false, messageId, binary.unpack!(M, true));
     }
 
     MsgType receiveType(){
         auto data = socket.receiveBinary();
         if( data.length < 8 ){
-            logError("mars - received message as binary data from websocket, length:%d, expected at least 8; closing connection", data.length);
+            logError("mars - S<--%s - received message as binary data from websocket, length:%d, expected at least 8; closing connection", clientId, data.length);
             return MsgType.aborting;
         }
-        logInfo("mars - S<--%s - message data:%s", clientId, data);
+        //logInfo("mars - S<--%s - message data:%s", clientId, data);
         messageId = * cast(int*)(data[0 .. 4].ptr);
         int msgType = * cast(int*)(data[4 .. 8].ptr);
         //logInfo("mars - message id %d of type %d", messageId, msgType);
         if( msgType < MsgType.min || msgType > MsgType.max ){
-            logError("mars - received message of type %d, unknown; closing connection.", msgType);
+            logError("mars - S<--%s - received message of type %d, unknown; closing connection.", clientId, msgType);
             return MsgType.aborting;
         }
 

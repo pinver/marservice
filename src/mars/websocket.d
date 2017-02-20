@@ -41,7 +41,7 @@ void handleWebSocketConnection(scope WebSocket socket)
     // Task that receives and dispatch data to/for the socket
     void dataDispatcher(Task receiver)
     {
-        logInfo("task dataDispatcher starting for sessionid %s", sessionId);
+        //logInfo("task dataDispatcher starting for sessionid %s", sessionId);
         scope(exit) logInfo("task dataDispatcher terminating for sessionid %s", sessionId);
         try {
             while(true)
@@ -65,15 +65,15 @@ void handleWebSocketConnection(scope WebSocket socket)
                     auto socketData = receiveOnly!SocketBinaryData();
                     final switch(socketData.flow) with(Flow) {
                         case connectionLost:
-                            logInfo("mars - connection lost received by web socket receiver, so terminating");
+                            //logInfo("mars - connection lost received by web socket receiver, so terminating");
                             import mars.msg : MarsMsgType = MsgType;
                             int messageId = 0; auto msgType = MarsMsgType.aborting;
                             immutable(ubyte)[8] prefix = (cast(immutable(ubyte)*)(&(messageId)))[0 .. 4] 
                                                            ~ (cast(immutable(ubyte)*)(&(msgType)))[0 .. 4];
-                            trace("sending forged abort to the protocol", prefix);
+                            //trace("sending forged abort to the protocol", prefix);
                             // XXX non ho capito perchè, ma con solo il prefix, viene ricevuto sminchio ...
                             receiver.send(HandlerBinaryData( (prefix ~ prefix).idup ));
-                            trace("sending forged abort done, returning and exiting the task");
+                            //trace("sending forged abort done, returning and exiting the task");
                             
                             return;
                         case received:
@@ -96,8 +96,8 @@ void handleWebSocketConnection(scope WebSocket socket)
     // Task that receives from the websocket and dispatch to the above task
     void wsReceiver(Task receiver)
     {
-        logInfo("task wsReceiver starting");
-        scope(exit) logInfo("task wsReceiver terminating");
+        //logInfo("task wsReceiver starting");
+        //scope(exit) logInfo("task wsReceiver terminating");
         try {
             while( socket.waitForData() )
             {
@@ -119,7 +119,7 @@ void handleWebSocketConnection(scope WebSocket socket)
             } else {
                 receiver.send(SocketData(Flow.connectionLost));
             }
-            logInfo("mars - task websocket receiver exiting");
+            //logInfo("mars - task websocket receiver exiting");
         }
         catch(Exception e){
             logError("mars - task wsReceiver exception!");
@@ -136,7 +136,7 @@ void handleWebSocketConnection(scope WebSocket socket)
     protoHelo(Proxy(dataDispatcherTask, &receiveMode)); // XXX I don't like this, but...
 
     // ... we have terminated the client process, 
-    logInfo("mars - %d tasks are running", dataDispatcherTask.taskCounter());
+    logInfo("mars - exiting the task that handled the websocker:%d tasks are running", dataDispatcherTask.taskCounter());
 }
 
 struct Proxy {

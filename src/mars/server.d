@@ -52,7 +52,6 @@ class MarsServer
     /// Register the client between the connected clients
     MarsClient* engageClient(string clientId)
     {
-        import std.experimental.logger; trace("clients? %s", marsClients.keys());
         auto client = clientId in marsClients;
         if( client is null ){
             marsClients[clientId] = MarsClient(clientId, configuration.databaseService);
@@ -93,8 +92,9 @@ class MarsServer
             auto reply = AuthenticateReply(0);
             reply.sqlCreateDatabase = configuration.alasqlCreateDatabase;
             reply.sqlStatements = configuration.alasqlStatements;
-            logInfo("S --> C | authenticate reply, autologin for %s", configuration.pgsqlUser);
+            logInfo("mars - S --> C | authenticate reply, autologin for %s", configuration.pgsqlUser);
             client.sendBroadcast(reply);
+            createClientSideTablesFor(client);
         }
         startDatabaseHandler();
     }
@@ -146,9 +146,7 @@ class MarsServer
         
         logInfo("mars - database handler starting.");
         
-        foreach(t; tables){
-            logInfo("mars - exposing table %s to clients", t);
-        }
+        //foreach(t; tables){ logInfo("mars - exposing table %s to clients", t); }
         runTask(&handleDatabase);
     }
 

@@ -106,7 +106,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             asStruct!table[] rows;
             foreach(v; resultSet){
                 rows ~= v;
-                import std.stdio; writeln("selectRows:", v);
+                //import std.stdio; writeln("selectRows:", v);
                 // XXX
             }
             resultSet.close();
