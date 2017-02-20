@@ -13,6 +13,7 @@ module mars.websocket;
 
 import vibe.core.concurrency;
 import vibe.core.core;
+import vibe.core.log;
 import vibe.core.task;
 import vibe.http.websockets;
 
@@ -28,8 +29,6 @@ enum ReceiveMode { text, binary }
 void handleWebSocketConnection(scope WebSocket socket)
 {
 
-    import std.experimental.logger : logInfo = logf, trace;
-    alias logError = logInfo;
 
     // ... the HTTP request that established the web socket connection, let's extract the client address & session...
     string clientAddress = socket.request.clientAddress.toString();
