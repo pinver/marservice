@@ -63,7 +63,7 @@ string deleteFromParameter(const(Table) table)
     }
 }
 unittest {
-    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).deleteParameter;
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).deleteFromParameter;
     assert( sql == "delete from bar where foo = $foo", sql );
 }
 
