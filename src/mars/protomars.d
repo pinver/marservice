@@ -74,6 +74,10 @@ void protoMars(S)(MarsClient* client, S socket_)
                 protoDeleteRecordRequest(client, socket);
                 break;
 
+            case deleteRecordReply:
+                logInfo("mars - S<--%s - received an deleteRecordReply", client.id);
+                break;
+
             default:
                 logInfo("mars - S<--%s - received a message of type %s, skipping!", client.id, msgType);
                 assert(false);

@@ -185,10 +185,10 @@ class MarsServer
                    if( syncStarted ){
                        req.syncOperation = 1;
                        client.sendRequest(req);
-
                    }
                } 
             }
+            foreach( table; tables ){ table.unsafeReset(); }
         }
     }
 

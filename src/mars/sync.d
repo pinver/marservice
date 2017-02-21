@@ -44,12 +44,16 @@ class BaseServerSideTable(ClientT)
     abstract size_t count(Database) const;
     abstract size_t countRowsToInsert() const;
     abstract size_t countRowsToUpdate() const;
+    abstract size_t countRowsToDelete() const;
     abstract size_t index() const;
     abstract immutable(ubyte)[] packRowsToInsert();
     abstract immutable(ubyte)[] packRowsToUpdate();
+    abstract immutable(ubyte)[] packRowsToDelete();
 
     abstract immutable(ubyte)[][2] insertRecord(Database, immutable(ubyte)[], ref InsertError);
     abstract immutable(ubyte)[]    deleteRecord(Database, immutable(ubyte)[], ref DeleteError);
+
+    abstract void unsafeReset();
 
     immutable Table definition; 
     private {
@@ -89,6 +93,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     //static if( ! table.durable ){ // XXX
         override size_t countRowsToInsert() const { return toInsert.length; }
         override size_t countRowsToUpdate() const { return toUpdate.length; }
+        override size_t countRowsToDelete() const { return toDelete.length; }
     //}
 
     /// return the unique index identifier for this table, that's coming from the table definition in the app.d
@@ -189,11 +194,14 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     KeysStruct deleteRecord(Database db, KeysStruct keys, ref DeleteError err){
         static if(table.durable){
             db.executeDelete!(table, KeysStruct)(keys, err);
-            //toDelete[keys] = keys;
+            toDelete[keys] = 0;
         }
         else {
             fixtures.remove(keys);
-            //toDelete[keys] = 0;
+            toDelete[keys] = 0;
+        }
+        foreach(ref cst; clientSideTables.values){
+            cst.ops ~= new ClientDeleteValues!ClientT();
         }
         return keys;
     }
@@ -280,7 +288,15 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     override immutable(ubyte)[] packRowsToInsert() {
         import msgpack : pack;
         auto packed = pack!(true)(toInsert.values()).idup;
-        toInsert = null;
+        //toInsert = null; can't reset... this is called for every client
+        return packed;
+    }
+
+    /// return the packet rows to delete in the client
+    override immutable(ubyte)[] packRowsToDelete() {
+        import msgpack : pack;
+        auto packed = pack!(true)(toDelete.keys()).idup;
+        //toInsert = null; can't reset... this is called for every client
         return packed;
     }
 
@@ -297,7 +313,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 
         import msgpack : pack;
         auto packed = pack!(true)(records).idup;
-        toUpdate = null;
+        //toUpdate = null; can't reset... this is called for every client
         return packed;
     }
 
@@ -306,17 +322,21 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         fixtures[keys] = fixture;
     }
 
-    void unsafeReset() {
-        fixtures = null;
+    override void unsafeReset() {
+        //fixtures = null;
         toInsert = null;
         toUpdate = null;
+        toDelete = null;
     }
 
     //static if( ! table.durable ){
         asStruct!(table)[asPkStruct!(table)] fixtures;
         asStruct!(table)[asPkStruct!(table)] toInsert;
         asStruct!(table)[asPkStruct!(table)] toUpdate;
-        asStruct!(table)[asPkStruct!(table)] toDelete;
+        int[asPkStruct!(table)] toDelete;
+
+        // ... record inserted client side, already patched and inserted for this client.
+        //asStruct!(table)[string] notToInsert;
     //}
 }
 
@@ -390,7 +410,44 @@ private
                 marsClient.sendRequest(req);
             }
         }
-        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst){}
+        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst){
+            import mars.msg : InsertValuesRequest;
+            import std.conv : to;
+            if( sst.countRowsToInsert > 0 ){
+                auto payload = sst.packRowsToInsert();
+                auto req = InsertValuesRequest();
+                req.statementIndex = indexStatementFor(sst.index, "insert").to!int;
+                req.bytes = payload;
+                marsClient.sendRequest(req);
+            }
+        }
+    }
+    class ClientDeleteValues(MarsClientT) : SynOp!MarsClientT {
+        
+        override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
+        {
+            import mars.msg : DeleteRecordRequest;
+            import std.conv : to;
+            
+            if( sst.countRowsToDelete > 0 ){
+                auto payload = sst.packRowsToDelete();
+                auto req = DeleteRecordRequest();
+                req.statementIndex = indexStatementFor(sst.index, "delete").to!int;
+                req.bytes = payload;
+                marsClient.sendRequest(req);
+            }
+        }
+        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst){
+            import mars.msg : DeleteRecordRequest;
+            import std.conv : to;
+            if( sst.countRowsToDelete > 0 ){
+                auto payload = sst.packRowsToDelete();
+                auto req = DeleteRecordRequest();
+                req.statementIndex = indexStatementFor(sst.index, "delete").to!int;
+                req.bytes = payload;
+                marsClient.sendRequest(req);
+            }
+        }
     }
 
     class ClientUpdateValues(MarsClientT) : SynOp!MarsClientT {

@@ -81,6 +81,7 @@ struct SyncOperationReply {
     int donno;
 }
 
+// S --> C in the op
 struct InsertValuesRequest {
     static immutable type = MsgType.insertValuesRequest;
     int statementIndex;
