@@ -42,6 +42,10 @@ enum s2 = schema("foo").table("bar");
 struct Schema {
     string name;
     immutable(Table)[] tables;
+
+    auto tableNamed(string name) const {
+        return tables.find!((t) => t.name == name)[0];
+    }
 }
 /+
 Schema table(immutable(Schema) schema, string name, immutable(Col)[] columns, immutable(size_t)[] primaryKey, immutable(Reference)[] references, size_t index){
