@@ -51,20 +51,20 @@ string deleteFromParameter(const(Table) table)
         return "delete from %s where %s"
             .format(
                     table.name,
-                    table.pkCols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+                    table.pkCols.map!( (c) => c.name ~ " = $" ~ c.name).join(" AND "),
                    );
     }
     else {
         return "delete from %s where %s"
             .format(
                     table.name,
-                    table.columns.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+                    table.columns.map!( (c) => c.name ~ " = $" ~ c.name).join(" AND "),
                    );
     }
 }
 unittest {
     auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).deleteParameter;
-    assert( sql == "delete from bar where foo = $keyfoo", sql );
+    assert( sql == "delete from bar where foo = $foo", sql );
 }
 
 string createDatabase(const(Schema) schema)

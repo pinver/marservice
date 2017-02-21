@@ -12,7 +12,6 @@ void protoInsertValueRequest(S)(MarsClient* client, S socket)
     import msgpack : unpack, pack;
 
     auto insertValueRequest = socket.binaryAs!InsertValuesRequest;
-    import std.stdio; writeln("mars - protoInsertValueRequest decoded it as :", insertValueRequest);
 
     int tableIndex = insertValueRequest.statementIndex;
 
@@ -23,6 +22,7 @@ void protoInsertValueRequest(S)(MarsClient* client, S socket)
         cast(int)(err), 
         reply[0], 
         reply[1], 
+        tableIndex,
         err == InsertError.inserted? indexStatementFor(tableIndex, "update").to!int : indexStatementFor(tableIndex, "delete").to!int, 
     );
     socket.sendReply(insertValueRequest, replyMsg);

@@ -49,7 +49,7 @@ class BaseServerSideTable(ClientT)
     abstract immutable(ubyte)[] packRowsToUpdate();
 
     abstract immutable(ubyte)[][2] insertRecord(Database, immutable(ubyte)[], ref InsertError);
-    abstract immutable(ubyte)[]    deleteRecord(Database, immutable(ubyte)[]);
+    abstract immutable(ubyte)[]    deleteRecord(Database, immutable(ubyte)[], ref DeleteError);
 
     immutable Table definition; 
     private {
@@ -165,26 +165,37 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         return [
             inserted.pack!(true).idup, 
             record.pkParamValues!table().pack!(true).idup // clientKeys
-            ];
+        ];
     }
 
-    override immutable(ubyte)[] deleteRecord(Database db, immutable(ubyte)[] data){
-        import msgpack : pack, unpack;
-        asStruct!table record = unpack!(ColumnsStruct, true)(data);
+    override immutable(ubyte)[] deleteRecord(Database db, immutable(ubyte)[] data, ref DeleteError err){
+        import msgpack : pack, unpack, MessagePackException;
+        asStruct!table record;
+        try {
+            record = unpack!(ColumnsStruct, true)(data);
+        }
+        catch(MessagePackException exc){
+            errorf("mars - failed to unpack record to insert in '%s': maybe a wrong type of data in js", table.name);
+            errorf(exc.toString);
+            err = DeleteError.unknownError;
+            return data;
+        }
         KeysStruct keys = record.pkValues!table();
-        deleteRecord(db, keys);
+        deleteRecord(db, keys, err);
+        if( err != DeleteError.deleted ) return data;
         return [];
     }
 
-    immutable(ubyte)[] deleteRecord(Database db, KeysStruct keys){
+    KeysStruct deleteRecord(Database db, KeysStruct keys, ref DeleteError err){
         static if(table.durable){
-            db.executeDelete!(table, KeysStruct)(keys);
+            db.executeDelete!(table, KeysStruct)(keys, err);
+            //toDelete[keys] = keys;
         }
         else {
             fixtures.remove(keys);
             //toDelete[keys] = 0;
         }
-        return [];
+        return keys;
     }
 
     /// update row in the server table, turning the client tables out of sync

@@ -115,8 +115,8 @@ struct MarsClient
         return inserted;
     }
 
-    immutable(ubyte)[] vueDeleteRecord(int tableIndex, immutable(ubyte)[] record){
-        immutable(ubyte)[] deleted = marsServer.tables[tableIndex].deleteRecord(db, record);
+    immutable(ubyte)[] vueDeleteRecord(int tableIndex, immutable(ubyte)[] record, ref DeleteError err){
+        immutable(ubyte)[] deleted = marsServer.tables[tableIndex].deleteRecord(db, record, err);
         return deleted;
     }
 

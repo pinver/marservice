@@ -8,7 +8,7 @@ import std.string;
 import std.range;
 
 import mars.defs;
-import mars.msg : AuthoriseError, InsertError;
+import mars.msg : AuthoriseError, InsertError, DeleteError;
 
 import ddb.postgres;
 import ddb.db;
@@ -145,21 +145,23 @@ class Database
         return result;
     }
 
-    void executeDelete(immutable(Table) table, Pk)(Pk pk){
+    void executeDelete(immutable(Table) table, Pk)(Pk pk, ref DeleteError err){
         enum sql = deleteFromParameter(table);
         auto cmd = new PGCommand(conn, sql);
+
         addParameters!table(cmd, pk);
-        /+static if( pk.tupleof.length >= 1 ){ cmd.parameters.add(1, table.pkCols[0].type.toPGType).value = pk.tupleof[0]; }
-        static if( pk.tupleof.length >= 2 ){ cmd.parameters.add(2, table.pkCols[1].type.toPGType).value = pk.tupleof[1]; }
-        static if( pk.tupleof.length >= 3 ){ cmd.parameters.add(3, table.pkCols[2].type.toPGType).value = pk.tupleof[2]; }
-        static if( pk.tupleof.length >= 4 ){ cmd.parameters.add(4, table.pkCols[3].type.toPGType).value = pk.tupleof[3]; }
-        static if( pk.tupleof.length >= 5 ){ cmd.parameters.add(5, table.pkCols[4].type.toPGType).value = pk.tupleof[4]; }
-        static if( pk.tupleof.length >= 6 ){ cmd.parameters.add(6, table.pkCols[5].type.toPGType).value = pk.tupleof[5]; }
-        static if( pk.tupleof.length >= 7 ){ cmd.parameters.add(7, table.pkCols[6].type.toPGType).value = pk.tupleof[6]; }
-        static if( pk.tupleof.length >= 8 ){ cmd.parameters.add(8, table.pkCols[7].type.toPGType).value = pk.tupleof[7]; }
-        static if( pk.tupleof.length >= 9 ){ cmd.parameters.add(9, table.pkCols[8].type.toPGType).value = pk.tupleof[8]; }
-        static if( pk.tupleof.length >= 10 ) static assert(false, pk.tupleof.length);+/
-        cmd.executeNonQuery();
+        try {
+            cmd.executeNonQuery();
+            err = DeleteError.deleted;
+        }
+        catch(ServerErrorException e){
+            switch(e.code){
+                default:
+                    logWarn("S -- C | Unhandled PostgreSQL server error during deletion!");
+                    logInfo("S --- C | PostgreSQL server error: %s", e.toString);
+                    err = DeleteError.unknownError;
+            }
+        }
     }
 
     void executeUpdate(immutable(Table) table, Pk, Row)(Pk pk, Row record){

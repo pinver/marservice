@@ -98,6 +98,7 @@ struct InsertValuesReply {
     int insertStatus; // the insert error
     immutable(ubyte)[] bytes = []; // the server inserted record
     immutable(ubyte)[] clientKeys = [];
+    int tableIndex = -1;
     int statementIndex = -1; // the sql statement to use for emending the client with the server data
 }
 
@@ -107,9 +108,18 @@ struct DeleteRecordRequest {
     immutable(ubyte)[] bytes = []; 
 }
 
+enum DeleteError {
+    assertCheck,
+    deleted,
+    unknownError,
+}
+// flowing from server to client
 struct DeleteRecordReply {
     static immutable type =  MsgType.deleteRecordReply;
-    int fake;
+    int deleteStatus;
+    immutable(ubyte)[] serverRecord = []; // if we can't delete the record, we must re-insert it into the client
+    int tableIndex;
+    int statementIndex;
 }
 
 struct UpdateValuesRequest {
