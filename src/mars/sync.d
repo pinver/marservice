@@ -11,6 +11,7 @@ import std.meta;
 import std.typecons;
 import std.experimental.logger;
 import std.format;
+import std.conv;
 
 import mars.defs;
 import mars.pgsql;
@@ -503,6 +504,7 @@ unittest
     assert( sst.fixtures[sst.KeysStruct(2)] == sst.ColumnsStruct(2, "z") );
     +/
 }
+/+
 unittest
 {
     version(starwars){
@@ -512,15 +514,16 @@ unittest
         auto people = new ServerSideTable!(MarsClientMock, schema.tables[0]);
         auto scores = new ServerSideTable!(MarsClientMock, schema.tables[3]);
         auto databaseService = DatabaseService("127.0.0.1", 5432, "starwars");
-        auto db = databaseService.connect("jedi", "force");
+        AuthoriseError err;
+        auto db = databaseService.connect("jedi", "force", err);
         db.executeUnsafe("begin transaction");
         
         auto rows = people.selectRows(db);
-        assert( rows[0] == luke );
+        assert( rows[0] == luke, rows[0].to!string );
 
         auto paolo = Person("Paolo", "male", [0x00, 0x01, 0x02, 0x03, 0x04], 1.80);
-        InsertError err;
-        auto inserted = people.insertRecord(db, paolo, err);
+        InsertError ierr;
+        auto inserted = people.insertRecord(db, paolo, ierr);
         assert(inserted == paolo);
         
 
@@ -529,5 +532,5 @@ unittest
         //assert(false);
     }
 }
-
++/
 
