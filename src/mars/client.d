@@ -6,11 +6,12 @@ import std.datetime,
 
 import vibe.core.log;
 import vibe.data.json;
+import vibe.http.websockets;
 
 import mars.msg;
 import mars.server;
 import mars.websocket;
-import mars.protomars : MarsProxy; // XXX per instanziare la variabile per il socket... dovrei fare un interfaccia?
+import mars.protomars : MarsProxyStoC; // XXX per instanziare la variabile per il socket... dovrei fare un interfaccia?
                                    // nel momento in cui instanzio il client, non ho ancora il MarsProxy, che invece
                                    // instanzio nel protoMars. Dovrei instanziare il client nel protoMars? Maybe yes
                                    // visto che è li che, dopo aver stabilito che è un client mars, instanzio il socket.
@@ -72,12 +73,21 @@ struct MarsClient
     }
     private int nextId = 1;
 
+    auto receiveReply(M)() in { assert(isConnected); } body
+    {
+        return socket.receiveMsg!M();
+    }
+
     /**
      * The Helo protocol will wire the active socket here, and will set this to null when disconnecting. */
-    void wireSocket(MarsProxy!Proxy socket)
+    void wireSocket(MarsProxyStoC!WebSocket socket)
     {
         this.socket = socket;
     }
+
+    /**
+     * Returns true if the 'server to client' socket was opened and wired to us. */
+    bool socketWired() { return this.socket != this.socket.init; }
 
     /**
      * Called by the authentication protocol.
@@ -120,7 +130,6 @@ struct MarsClient
         return deleted;
     }
 
-    //ClientSideTable!(typeof(this)*)*[string] tables;
     private {
         string id_;
 
@@ -128,7 +137,7 @@ struct MarsClient
         //string password;
         string seed;
 
-        MarsProxy!Proxy socket;
+        MarsProxyStoC!WebSocket socket;
         
         public typeof(MarsServer.serverSideMethods) serverSideMethods;
         DatabaseService databaseService;

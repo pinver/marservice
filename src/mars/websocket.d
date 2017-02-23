@@ -26,9 +26,10 @@ struct HandlerBinaryData { immutable(ubyte)[] data; }
 enum ReceiveMode { text, binary }
 /**
  * Entry point of the task that is handling the websocket connection with the client that has just joined us. */
-void handleWebSocketConnection(scope WebSocket socket)
+void handleWebSocketConnectionClientToService(scope WebSocket socket)
 {
-
+    logInfo("the webclient connected the S <-- C channel");
+    vibe.core.core.yield();
 
     // ... the HTTP request that established the web socket connection, let's extract the client address & session...
     string clientAddress = socket.request.clientAddress.toString();
@@ -37,6 +38,7 @@ void handleWebSocketConnection(scope WebSocket socket)
     // ... we can receive text and binary data, and we start with text ...
     ReceiveMode receiveMode = ReceiveMode.text;
 
+    /+
     // Task that receives and dispatch data to/for the socket
     void dataDispatcher(Task receiver)
     {
@@ -91,7 +93,9 @@ void handleWebSocketConnection(scope WebSocket socket)
             logError(e.toString());
         }
     }
+    +/
 
+    /+
     // Task that receives from the websocket and dispatch to the above task
     void wsReceiver(Task receiver)
     {
@@ -125,17 +129,50 @@ void handleWebSocketConnection(scope WebSocket socket)
             logError(e.toString());
         }
     }
+    +/
 
+    /+
     // Activate the tasks for this client ....
+
+    // As we are passing getThis as parameter, THIS task will be notified about data received by the websocket, so the 
+    // Proxy shoud be used by this task ...
     auto dataDispatcherTask = runTask( &dataDispatcher, Task.getThis );
-    auto wsReceiverTask = runTask( &wsReceiver, dataDispatcherTask );   
+    // Start the task that will send the websocket data to the dispatcher task ... 
+    auto wsReceiverTask = runTask( &wsReceiver, dataDispatcherTask );
+    +/  
 
     // Identify the client type and start processing it ...
     import mars.protohelo : protoHelo;
-    protoHelo(Proxy(dataDispatcherTask, &receiveMode)); // XXX I don't like this, but...
+    //protoHelo(Proxy(dataDispatcherTask, &receiveMode));
+    protoHelo(socket);
 
     // ... we have terminated the client process, 
-    logInfo("mars - exiting the task that handled the websocker:%d tasks are running", dataDispatcherTask.taskCounter());
+    logInfo("mars - exiting the task that handled the websocker:%d tasks are running"/+, dataDispatcherTask.taskCounter()+/);
+}
+
+/**
+ * Entry point of the task that is handling the websocket connection with the client that has just joined us. */
+void handleWebSocketConnectionServiceToClient(scope WebSocket socket)
+{
+    import mars.server : marsServer;
+
+    logInfo("the webclient connected the S --> C channel");
+    string clientId = socket.receiveText();
+    logInfo("received the client identifier:%s", clientId);
+
+    // expose this task to the marsClient, so that it can push request to the web client
+    assert(marsServer !is null);
+    auto client = marsServer.getClient(clientId);
+    if( client is null ){
+        logError("mars - can't find the mars client with id %s in the server registered clients");
+        return;
+    }
+    import mars.protomars : MarsProxyStoC;
+    client.wireSocket(MarsProxyStoC!WebSocket(socket, clientId));
+
+    logInfo("push channel waiting for termination");
+    string terminate = receiveOnly!string();
+    logInfo("push channel terminating");
 }
 
 struct Proxy {

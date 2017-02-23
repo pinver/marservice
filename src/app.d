@@ -39,13 +39,14 @@ void setupWebSocketServer()
     import vibe.http.server : HTTPServerSettings, listenHTTP;
     import vibe.http.websockets : handleWebSockets;
     import mars.server;
-    import mars.websocket : handleWebSocketConnection;
+    import mars.websocket : handleWebSocketConnectionClientToService, handleWebSocketConnectionServiceToClient;
 
     auto router = new URLRouter();
-    router.get("/ws", handleWebSockets(&handleWebSocketConnection));
+    router.get("/ws_c2s", handleWebSockets(&handleWebSocketConnectionClientToService));
+    router.get("/ws_s2c", handleWebSockets(&handleWebSocketConnectionServiceToClient));
 
     auto settings = new HTTPServerSettings();
-    settings.port = 8081;
+    settings.port = 8082;
     settings.bindAddresses = ["::1", "0.0.0.0"];
     listenHTTP(settings, router);
 }

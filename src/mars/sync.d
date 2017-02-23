@@ -15,8 +15,8 @@ import std.conv;
 
 import mars.defs;
 import mars.pgsql;
-import mars.msg : InsertError;
-import mars.server : indexStatementFor;
+import mars.msg;
+import mars.server;
 
 class BaseServerSideTable(ClientT)
 {
@@ -121,7 +121,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             return rows;
         }
         else {
-            size_t till  = (limit + offset) > count ? count : (limit + offset);
+            size_t till  = (limit + offset) > count(db) ? count(db) : (limit + offset);
             return fixtures.values()[offset .. till];
         }
     }
@@ -277,7 +277,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     /// returns the packet selected rows
     override immutable(ubyte)[] packRows(size_t offset = 0, size_t limit = long.max) const {
         import msgpack : pack;
-        return pack!(true)(selectRows(offset, limit)).idup;
+        return pack!(true)(selectRows(null, offset, limit)).idup;
     }
     /// returns the packet selected rows
     override immutable(ubyte)[] packRows(Database db, size_t offset = 0, size_t limit = long.max) const {
@@ -366,17 +366,17 @@ private
         {
             assert(db !is null);
 
-            import mars.msg : ImportValuesRequest;
-            import std.conv : to;
-
             // ... if the table is empty, simply do nothing ...
             if( sst.count(db) > 0 ){
                 auto payload = sst.packRows(db);
 
-                auto req = ImportValuesRequest();
-                req.statementIndex = indexStatementFor(sst.index, "insert").to!int;
-                req.bytes = payload;
+                auto req = ImportRecordsReq(); with(req){
+                    tableIndex = sst.index;
+                    statementIndex = indexStatementFor(sst.index, "insert");
+                    encodedRecords = payload;
+                }
                 marsClient.sendRequest(req);
+                auto rep = marsClient.receiveReply!ImportRecordsRep();
             }
         }
         override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
@@ -388,10 +388,13 @@ private
             if( sst.count > 0 ){
                 auto payload = sst.packRows();
 
-                auto req = ImportValuesRequest();
-                req.statementIndex = indexStatementFor(sst.index, "insert").to!int;
-                req.bytes = payload;
+                auto req = ImportRecordsReq();  with(req){
+                    tableIndex =sst.index;
+                    statementIndex = indexStatementFor(sst.index, "insert");
+                    encodedRecords = payload;
+                }
                 marsClient.sendRequest(req);
+                auto rep = marsClient.receiveReply!ImportRecordsRep();
             }
         }
     }
@@ -400,53 +403,57 @@ private
         
         override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
         {
-            import mars.msg : InsertValuesRequest;
-            import std.conv : to;
-            
             if( sst.countRowsToInsert > 0 ){
                 auto payload = sst.packRowsToInsert();
-                auto req = InsertValuesRequest();
-                req.statementIndex = indexStatementFor(sst.index, "insert").to!int;
-                req.bytes = payload;
+                auto req = InsertRecordsReq(); with(req){
+                    tableIndex = sst.index;
+                    statementIndex = indexStatementFor(sst.index, "insert");
+                    encodedRecords = payload;
+                }
                 marsClient.sendRequest(req);
+                auto rep = marsClient.receiveReply!InsertRecordsRep();
             }
         }
-        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst){
-            import mars.msg : InsertValuesRequest;
-            import std.conv : to;
+        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
+        {
             if( sst.countRowsToInsert > 0 ){
                 auto payload = sst.packRowsToInsert();
-                auto req = InsertValuesRequest();
-                req.statementIndex = indexStatementFor(sst.index, "insert").to!int;
-                req.bytes = payload;
+                auto req = InsertRecordsReq(); with(req){
+                    tableIndex = sst.index;
+                    statementIndex = indexStatementFor(sst.index, "insert");
+                    encodedRecords = payload;
+                }
                 marsClient.sendRequest(req);
+                auto rep = marsClient.receiveReply!InsertRecordsRep();
             }
         }
     }
+    
     class ClientDeleteValues(MarsClientT) : SynOp!MarsClientT {
         
         override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
         {
-            import mars.msg : DeleteRecordRequest;
-            import std.conv : to;
-            
             if( sst.countRowsToDelete > 0 ){
                 auto payload = sst.packRowsToDelete();
-                auto req = DeleteRecordRequest();
-                req.statementIndex = indexStatementFor(sst.index, "delete").to!int;
-                req.bytes = payload;
+                auto req = DeleteRecordsReq(); with(req){
+                    tableIndex = sst.index;
+                    statementIndex = indexStatementFor(sst.index, "delete").to!int;
+                    encodedRecords = payload;
+                }
                 marsClient.sendRequest(req);
+                auto rep = marsClient.receiveReply!DeleteRecordsRep();
             }
         }
         override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst){
-            import mars.msg : DeleteRecordRequest;
-            import std.conv : to;
             if( sst.countRowsToDelete > 0 ){
                 auto payload = sst.packRowsToDelete();
-                auto req = DeleteRecordRequest();
-                req.statementIndex = indexStatementFor(sst.index, "delete").to!int;
-                req.bytes = payload;
+                auto req = DeleteRecordsReq(); with(req){
+                    tableIndex = sst.index;
+                    statementIndex = indexStatementFor(sst.index, "delete").to!int;
+                    encodedRecords = payload;
+                }
                 marsClient.sendRequest(req);
+                auto rep = marsClient.receiveReply!DeleteRecordsRep();
             }
         }
     }

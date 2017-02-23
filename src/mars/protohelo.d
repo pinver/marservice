@@ -19,7 +19,7 @@ import mars.protomars;
 void protoHelo(T)(T socket)
 {
     // ... verify that it's a mars client ...
-    if(auto helo = socket.receive() != "mars" )
+    if(auto helo = socket.receiveText() != "mars" )
     {
         logError("mars - client connected, but the helo is wrong:%s", helo);
         return;
@@ -27,7 +27,7 @@ void protoHelo(T)(T socket)
     socket.send("marsserver0000");
 
     // ... based on the client id, the server will instantiate or retrieve a client-side structure
-    auto clientId = socket.receive();
+    auto clientId = socket.receiveText();
     assert(marsServer !is null);
     auto marsClient = marsServer.engageClient(clientId);
     auto reply = marsClient.reconnections.length > 1? "marsreconnected" : "marswelcome";

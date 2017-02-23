@@ -6,13 +6,13 @@
     "license": "MIT",
 
     "targetPath": "bin",
-    "buildRequirements": ["silenceDeprecations"],
+    "buildRequirements__": ["silenceDeprecations"],
     "dependencies": 
     {
-        "vibe-d:core": "0.7.30",
-        "vibe-d:http": "0.7.30",
+        "vibe-d:core": "0.8.0-beta.3",
+        "vibe-d:http": "0.8.0-beta.3",
         "ddb": "~master",
-        "msgpack-d": "~>1.0.0-beta.5"
+        "msgpack-d": "~>1.0.0-beta.6"
     },
 
     "versions": ["starwars"],

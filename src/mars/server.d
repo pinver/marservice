@@ -89,11 +89,13 @@ class MarsServer
             auto dbAuthorised = client.authoriseUser(configuration.pgsqlUser, configuration.pgsqlPassword);
             if( dbAuthorised != AuthoriseError.authorised ) 
                 throw new Exception("Server autologin enabled, but can't authorise with postgreSQL");
-            auto reply = AuthenticateReply(0);
-            reply.sqlCreateDatabase = configuration.alasqlCreateDatabase;
-            reply.sqlStatements = configuration.alasqlStatements;
-            logInfo("mars - S --> C | authenticate reply, autologin for %s", configuration.pgsqlUser);
-            client.sendBroadcast(reply);
+            auto request = AutologinReq(); with(request){
+                username = configuration.pgsqlUser;
+                sqlCreateDatabase = configuration.alasqlCreateDatabase;
+                sqlStatements = configuration.alasqlStatements;
+            }
+            logInfo("mars - S --> C | autologin request, autologin for %s", configuration.pgsqlUser);
+            client.sendRequest(request);
             createClientSideTablesFor(client);
         }
         startDatabaseHandler();
@@ -113,6 +115,10 @@ class MarsServer
         //trace("tracing...");
         }
     }
+
+    /**
+    Returns: a pointer to the mars client with that id, or null if it does not exists. */
+    MarsClient* getClient(string clientId){ return clientId in marsClients; }
 
     string delegate(MarsClient, string, Json) serverSideMethods;
 
@@ -167,8 +173,7 @@ class MarsServer
                if( client.isConnected && client.authorised && client.db !is null ){
                    bool syncStarted = false;
                    //logInfo("mars - database operations for client %s", client.id);
-                   auto req = SyncOperationRequest();
-                   req.syncOperation = 0;
+                   auto req = SyncOperationReq(SyncOperationReq.SyncOperation.starting);
                    foreach( table; tables ){
                        auto clientTable = table.clientSideTables[client.id];
                        //logInfo("mars - database operations for client %s table %s", client.id, table.definition.name);
@@ -183,7 +188,7 @@ class MarsServer
                        clientTable.ops = []; // XXX gestisci le singole failure...
                    }
                    if( syncStarted ){
-                       req.syncOperation = 1;
+                       req.operation = SyncOperationReq.SyncOperation.completed;
                        client.sendRequest(req);
                    }
                } 

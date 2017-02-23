@@ -61,7 +61,7 @@ void protoAuth(S)(MarsClient* client, S socket)
     socket.sendReply(authenticateRequest, reply);
 
     // ... try the push from the server, a new client has connected ...
-    if(dbAuthorised == AuthoriseError.authorised) marsServer.broadcast(WelcomeBroadcast(username));
+    //if(dbAuthorised == AuthoriseError.authorised) marsServer.broadcast(WelcomeBroadcast(username));
 }
 
 void protoDeauth(S)(MarsClient* client, S socket)
@@ -71,7 +71,7 @@ void protoDeauth(S)(MarsClient* client, S socket)
     auto reply = DiscardAuthenticationReply();
     socket.sendReply(request, reply);
 
-    marsServer.broadcast(GoodbyBroadcast("theusename"));
+    //marsServer.broadcast(GoodbyBroadcast("theusename"));
 }
 
 struct WelcomeBroadcast { static immutable type = MsgType.welcomeBroadcast; string username; }
