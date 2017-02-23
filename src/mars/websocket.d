@@ -164,7 +164,7 @@ void handleWebSocketConnectionServiceToClient(scope WebSocket socket)
     assert(marsServer !is null);
     auto client = marsServer.getClient(clientId);
     if( client is null ){
-        logError("mars - can't find the mars client with id %s in the server registered clients");
+        logError("mars - can't find the mars client with id %s in the server registered clients", clientId);
         return;
     }
     import mars.protomars : MarsProxyStoC;
