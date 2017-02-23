@@ -163,7 +163,8 @@ struct MarsProxyStoC(S)
     import msgpack : pack, unpack;
 
     struct ReceivedMessage(M) {
-        bool wrongMessageReceived = false;
+        enum { success, wrongMessageReceived, channelDropped }
+        int status;
         int messageId;
         
         M m; alias m this;
@@ -179,19 +180,38 @@ struct MarsProxyStoC(S)
         socket.send(prefix ~ packed);
     }
 
-    void sendRequest(A)(int messageId, A req){
+    /**
+    Returns: true/false on success. */
+    bool sendRequest(A)(int messageId, A req){
         immutable(ubyte)[8] prefix = (cast(immutable(ubyte)*)(&messageId))[0 .. 4] 
                                    ~ (cast(immutable(ubyte)*)(&(req.type)))[0 .. 4];
         immutable(ubyte)[] packed = req.pack!true().idup;
         logInfo("mars - S-->%s - sending message request %d of type %s with a payload of %d bytes", clientId, messageId, req.type, packed.length);
-        socket.send( (prefix ~ packed).dup );
+        try { socket.send( (prefix ~ packed).dup ); }
+        catch(Exception e){
+            // XXX libasync is raising a standard exception...
+            if( e.msg == "The remote peer has closed the connection." || 
+                e.msg == "WebSocket connection already actively closed.")
+            {
+                return false;
+            }
+            throw e;
+        }
+        return true;
     }
 
     ReceivedMessage!M receiveMsg(M)(){
         auto msgType = receiveType();
-        if( msgType != M.type ) return ReceivedMessage!M(true);
-        auto rm = ReceivedMessage!M(false, messageId, binaryAs!M);
-        return rm;
+
+        ReceivedMessage!M msg;
+        if(msgType == MsgType.aborting) msg.status = msg.channelDropped;
+        else if( msgType != M.type ) msg.status = msg.wrongMessageReceived;
+        else {
+            msg.status = msg.success;
+            msg.messageId = messageId;
+            msg.m =  binaryAs!M;
+        }
+        return msg;
     }
 
     ReceivedMessage!M binaryAs(M)(){
@@ -206,7 +226,16 @@ struct MarsProxyStoC(S)
     }
 
     MsgType receiveType(){
-        auto data = socket.receiveBinary();
+        import vibe.http.websockets : WebSocketException;
+
+        ubyte[] data;
+        try {  
+            data = socket.receiveBinary(); 
+        }
+        catch(WebSocketException e){
+            logInfo("mars - S<--%s - connection closed while reading message", clientId);
+            return MsgType.aborting; // XXX need a better message?
+        }
         if( data.length < 8 ){
             logError("mars - S<--%s - received message as binary data from websocket, length:%d, expected at least 8; closing connection", clientId, data.length);
             return MsgType.aborting;

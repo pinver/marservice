@@ -69,13 +69,18 @@ struct MarsClient
      * Push a new message, from the server to the client. Used by the server to inform clients about events. */
     void sendRequest(M)(M msg) in { assert(isConnected); } body 
     {
-        socket.sendRequest(nextId++, msg);
+        bool sent = socket.sendRequest(nextId++, msg);
+        if( ! sent ){
+            disconnected();
+        }
     }
     private int nextId = 1;
 
     auto receiveReply(M)() in { assert(isConnected); } body
     {
-        return socket.receiveMsg!M();
+        auto msg = socket.receiveMsg!M();
+        if( msg.status == msg.channelDropped ) disconnected();
+        return msg;
     }
 
     /**

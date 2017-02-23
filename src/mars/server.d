@@ -169,7 +169,7 @@ class MarsServer
         while(true) {
             sleep(2.seconds);
 
-            foreach(ref client; marsClients ){
+            clientLoop: foreach(ref client; marsClients ){
                if( client.isConnected && client.authorised && client.db !is null ){
                    bool syncStarted = false;
                    //logInfo("mars - database operations for client %s", client.id);
@@ -181,9 +181,17 @@ class MarsServer
                            if( ! syncStarted ){
                                syncStarted = true; 
                                client.sendRequest(req);
+                               if( ! client.isConnected ){
+                                   logInfo("mars - the client %s seems disconnected, continuing with another client", client.id);
+                                   continue clientLoop;
+                               }
                            }
-                           //logInfo("mars - executing database operation for client %s", client.id);
+                           logInfo("mars - executing database operation for client %s", client.id);
                            op.execute(client.db, &client, clientTable, table);
+                           if( ! client.isConnected ){
+                               logInfo("mars - the client %s seems disconnected after some operation, continuing with another client", client.id);
+                                continue clientLoop;
+                           }
                        }
                        clientTable.ops = []; // XXX gestisci le singole failure...
                    }
