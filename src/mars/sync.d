@@ -376,7 +376,8 @@ private
                     encodedRecords = payload;
                 }
                 marsClient.sendRequest(req);
-                auto rep = marsClient.receiveReply!ImportRecordsRep();
+                if(marsClient.isConnected) auto rep = marsClient.receiveReply!ImportRecordsRep();
+                
             }
         }
         override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
@@ -394,7 +395,7 @@ private
                     encodedRecords = payload;
                 }
                 marsClient.sendRequest(req);
-                auto rep = marsClient.receiveReply!ImportRecordsRep();
+                if(marsClient.isConnected) auto rep = marsClient.receiveReply!ImportRecordsRep();
             }
         }
     }
@@ -411,7 +412,7 @@ private
                     encodedRecords = payload;
                 }
                 marsClient.sendRequest(req);
-                auto rep = marsClient.receiveReply!InsertRecordsRep();
+                if(marsClient.isConnected) auto rep = marsClient.receiveReply!InsertRecordsRep();
             }
         }
         override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
@@ -424,7 +425,7 @@ private
                     encodedRecords = payload;
                 }
                 marsClient.sendRequest(req);
-                auto rep = marsClient.receiveReply!InsertRecordsRep();
+                if(marsClient.isConnected) auto rep = marsClient.receiveReply!InsertRecordsRep();
             }
         }
     }
@@ -441,7 +442,7 @@ private
                     encodedRecords = payload;
                 }
                 marsClient.sendRequest(req);
-                auto rep = marsClient.receiveReply!DeleteRecordsRep();
+                if(marsClient.isConnected) auto rep = marsClient.receiveReply!DeleteRecordsRep();
             }
         }
         override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst){
@@ -453,7 +454,7 @@ private
                     encodedRecords = payload;
                 }
                 marsClient.sendRequest(req);
-                auto rep = marsClient.receiveReply!DeleteRecordsRep();
+                if(marsClient.isConnected) auto rep = marsClient.receiveReply!DeleteRecordsRep();
             }
         }
     }
@@ -478,7 +479,6 @@ private
 
     class ServerUpdateValues(MarsClientT) : SynOp!MarsClientT {
         override void execute(Database db, MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst){
-            
         }
     }
 }
