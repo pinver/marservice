@@ -68,6 +68,10 @@ struct DatabaseService {
         }
         catch(ServerErrorException e){
             switch(e.code){
+                case "28000": // role "user" does not exist
+                    logInfo("PostgreSQL role does not exist");
+                    err = AuthoriseError.wrongUsernameOrPassword;
+                    break;
                 case "28P01": // password authentication failed for user "user"
                     logInfo("PostgreSQL password authentication failed for user");
                     err = AuthoriseError.wrongUsernameOrPassword;
