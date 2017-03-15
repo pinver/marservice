@@ -2,6 +2,7 @@
 module mars.client;
 
 import std.datetime,
+       std.format,
        std.experimental.logger;
 
 import vibe.core.log;
@@ -27,7 +28,7 @@ struct MarsClient
         connectionEvents ~= ConnessionEvent(ConnessionEvent.connected, Clock.currTime);
     }
     void disconnected() in {
-        assert( connectionEvents[$-1].type == ConnessionEvent.connected );
+        assert( connectionEvents[$-1].type == ConnessionEvent.connected, "clientId:%s, events:%s".format(id, connectionEvents) );
     } body {
         connectionEvents ~= ConnessionEvent(ConnessionEvent.disconnected, Clock.currTime);
     }
@@ -113,7 +114,10 @@ struct MarsClient
         }
         return err;
     }
-    void discardAuthorisation() { this.username = ""; }
+    void discardAuthorisation() { 
+        logWarn("S --- C | discarding previous authorisation");
+        this.username = ""; 
+    }
 
     bool authorised() { return this.username != ""; }
     string id() { return id_; }

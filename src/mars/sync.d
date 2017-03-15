@@ -33,10 +33,15 @@ class BaseServerSideTable(ClientT)
                 cst.ops ~= new ClientImportValues!ClientT();
         }
         // new client, new client side table
-        assert( (clientid in clientSideTables) is null );
+        assert( (clientid in clientSideTables) is null, format("cliendid:%s, clientSideTables:%s", clientid, clientSideTables.keys() ) );
         clientSideTables[clientid] = cst;
 
         return cst;
+    }
+
+    auto wipeClientSideTable(string clientid){
+        assert( (clientid in clientSideTables) !is null, clientid );
+        clientSideTables.remove(clientid);
     }
 
     abstract immutable(ubyte)[] packRows(size_t offset = 0, size_t limit = long.max);

@@ -28,7 +28,7 @@ enum ReceiveMode { text, binary }
  * Entry point of the task that is handling the websocket connection with the client that has just joined us. */
 void handleWebSocketConnectionClientToService(scope WebSocket socket)
 {
-    logInfo("the webclient connected the S <-- C channel");
+    logInfo("mars - S - C - the webclient connected the Client to Service channel");
     vibe.core.core.yield();
 
     // ... the HTTP request that established the web socket connection, let's extract the client address & session...
@@ -151,14 +151,17 @@ void handleWebSocketConnectionClientToService(scope WebSocket socket)
 }
 
 /**
- * Entry point of the task that is handling the websocket connection with the client that has just joined us. */
+ * Entry point of the task that is handling the connection that allow the service to push messages to the web client.
+ *
+ * First the client opens the connection that it uses to send messages to the service, THEN this one.
+ */
 void handleWebSocketConnectionServiceToClient(scope WebSocket socket)
 {
     import mars.server : marsServer;
 
-    logInfo("the webclient connected the S --> C channel");
+    logInfo("the webclient connected the Service to Client channel");
     string clientId = socket.receiveText();
-    logInfo("received the client identifier:%s", clientId);
+    logInfo("mars - S - C - Service To Client received the client identifier:%s", clientId);
 
     // expose this task to the marsClient, so that it can push request to the web client
     assert(marsServer !is null);

@@ -54,8 +54,17 @@ class MarsServer
     {
         auto client = clientId in marsClients;
         if( client is null ){
+            logInfo("mars S - %s - this is a new client.", clientId);
             marsClients[clientId] = MarsClient(clientId, configuration.databaseService);
             client = clientId in marsClients;
+        }
+        else {
+            // ... the client was already engaged, for safety, wipe the client side tables ...
+            logInfo("mars S - %s - this is a reconnection, wiping out the client side tables.", clientId);
+            foreach(ref table; tables){
+                table.wipeClientSideTable(client.id);
+            }
+
         }
         assert( client !is null );
         client.connected();
@@ -172,7 +181,7 @@ class MarsServer
             clientLoop: foreach(ref client; marsClients ){
                if( client.isConnected && client.authorised && client.db !is null ){
                    bool syncStarted = false;
-                   //logInfo("mars - database operations for client %s", client.id);
+                   logInfo("mars - database operations for client %s", client.id);
                    auto req = SyncOperationReq(SyncOperationReq.SyncOperation.starting);
                    foreach( table; tables ){
                        auto clientTable = table.clientSideTables[client.id];
@@ -181,6 +190,7 @@ class MarsServer
                            if( ! syncStarted ){
                                syncStarted = true; 
                                client.sendRequest(req);
+                               logInfo("mars - database operations for client %s sync started", client.id);
                                if( ! client.isConnected ){
                                    logInfo("mars - the client %s seems disconnected, continuing with another client", client.id);
                                    continue clientLoop;
@@ -198,6 +208,7 @@ class MarsServer
                    if( syncStarted ){
                        req.operation = SyncOperationReq.SyncOperation.completed;
                        client.sendRequest(req);
+                       logInfo("mars - database operations for client %s sync completed", client.id);
                    }
                } 
             }

@@ -95,7 +95,10 @@ struct AuthenticationRequest {
 }
 
 struct AuthenticationReply {
-    enum { seedProvided, invalidUsername }
+    enum { seedProvided, 
+        invalidUsername, 
+        alreadyAuthorised, /// one user is already logged in, and authorised.
+    }
     static immutable type = MsgType.authenticationReply;
     int status;
     string seed;

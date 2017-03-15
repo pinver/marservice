@@ -18,14 +18,22 @@ void protoAuth(S)(MarsClient* client, S socket)
 {
     import msgpack : unpack, pack;
 
+
     auto authenticationRequest = socket.binaryAs!AuthenticationRequest;
     string username = authenticationRequest.username;
+
+    // reject multiple authentication request ...
+    if( client.authorised ){
+        socket.sendReply(authenticationRequest, AuthenticationReply(AuthenticationReply.alreadyAuthorised));
+        return;
+    }
 
     // empty username, not allowed ...
     if( username == "" ){
         socket.sendReply(authenticationRequest, AuthenticationReply(AuthenticationReply.invalidUsername));
         return;
     }
+
 
     auto seed = letters.length
         .iota
@@ -34,7 +42,7 @@ void protoAuth(S)(MarsClient* client, S socket)
         .array;
     socket.sendReply(authenticationRequest, AuthenticationReply(AuthenticationReply.seedProvided, seed));
     auto authenticateRequest = socket.receiveMsg!AuthenticateRequest;
-    logInfo("S <-- C | authenticate request, hash:%s", authenticateRequest.hash);
+    logInfo("S <-- %s | authenticate request, hash:%s", client.id, authenticateRequest.hash);
 
     // ... right now, we can't pass the hash to postgres, so ...
     string hash256, password = "password";
@@ -57,7 +65,7 @@ void protoAuth(S)(MarsClient* client, S socket)
         marsServer.createClientSideTablesFor(client);
     }
 
-    logInfo("S --> C | authenticate reply, authorised:%s", dbAuthorised);
+    logInfo("S --> %s | authenticate reply, authorised:%s", client.id, dbAuthorised);
     socket.sendReply(authenticateRequest, reply);
 
     // ... try the push from the server, a new client has connected ...
