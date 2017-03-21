@@ -62,6 +62,8 @@ unittest {
     static assert( s.tables.length == 2 );
 }
 +/
+
+
 struct Table { 
     string name;
     immutable(Col)[] columns;
@@ -69,8 +71,17 @@ struct Table {
     Reference[] references;
     size_t index; /// the unique index of the table in the system.
     bool durable = true;
+    bool decorateRows = false;
 
     immutable(Schema)* schema;
+
+    @property immutable(Col)[] decoratedCols() const {
+        return columns ~ [
+            immutable(Col)("mars_who", Type.text, false), 
+            immutable(Col)("mars_what", Type.text, false), 
+            immutable(Col)("mars_when", Type.text, false),
+        ];
+    }
 
     /*
     If the table primary key is set by the terver, we need to return it to the client. */
@@ -205,6 +216,15 @@ template asStruct(alias t)
 }
 static assert(is( asStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [], [])) == struct )); 
 
+/// I can't use here an 'alias this' composition, as it would be serialised wrongly.
+template asSyncStruct(alias t)
+{
+    enum cols = t.decoratedCols;
+    enum string structName = t.name ~ "SyncRow";
+    enum string def = "struct " ~ structName ~ " {" ~ asStruct_!(cols) ~ "}";
+    mixin(def ~"; alias asSyncStruct = " ~ structName ~ ";");
+}
+
 template asPkStruct(alias t)
 {
     static if( t.pkCols.length >0 ){
@@ -326,4 +346,41 @@ auto pkParamValues(alias table)(asStruct!table fixture)
     }
     else static assert(false);
     return keys;
+}
+
+void assignCommonFields(R, V, size_t i = 0)(ref R r, V v)
+{
+    alias NamesR = FieldNameTuple!R;
+    alias NamesV = FieldNameTuple!V;
+    pragma(msg, NamesV);
+    pragma(msg, NamesR);
+
+    enum string Name = NamesV[i];
+
+    pragma(msg, "testing field======================= " ~ Name);
+
+    enum j = staticIndexOf!(Name, NamesR);
+    static if( j != -1 ){
+        pragma(msg, "present, assigning value");
+        r.tupleof[j] = v.tupleof[i];
+    }
+    static if(i+1 < NamesV.length){
+        assignCommonFields!(R, V, i+1)(r, v);
+    }
+}
+unittest 
+{
+    struct V { string a; string b; string c; }
+    struct R { string b; string a; }
+    struct X { int b; string a; }
+
+    V v = V("a", "b", "c");
+    R r;
+    X x;
+
+    static assert(!__traits(compiles, assignCommonFields!(X, V)(x, v) ));
+
+    assignCommonFields!(R, V)(r, v);
+    assert( r == R("b", "a")) ;
+
 }

@@ -14,6 +14,7 @@ struct AutologinReq
     string username;                   /// the username that has performed the autologin.
     string sqlCreateDatabase;          /// sql statements to execute for the creation of client side tables
     immutable(string)[] sqlStatements; /// sql statements to prepare, for further operations on the tables
+    immutable(string)[] jsStatements;  /// javascript statements to eval, like constraints, key extraction, etc.
 }
 
 struct DeleteRecordsReq 
@@ -123,6 +124,7 @@ struct AuthenticateReply {
     int status;
     string sqlCreateDatabase;
     immutable(string)[] sqlStatements;
+    immutable(string)[] jsStatements;  /// javascript statements to eval, like constraints, key extraction, etc.
 }
 
 struct DiscardAuthenticationRequest {
@@ -159,6 +161,7 @@ enum InsertError {
     duplicateKeyViolations,
     unknownError,
 }
+// sent from server to client validating or rejecting the optimistic update
 struct InsertValuesReply {
     static immutable type = MsgType.insertValuesReply;
     int insertStatus; // the insert error
@@ -166,6 +169,7 @@ struct InsertValuesReply {
     immutable(ubyte)[] clientKeys = [];
     int tableIndex = -1;
     int statementIndex = -1; // the sql statement to use for emending the client with the server data
+    int statementIndex2 = -1; // idem. For example, on errors, the first one is used to update the deco, then delete
 }
 
 struct DeleteRecordRequest {

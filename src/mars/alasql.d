@@ -13,12 +13,13 @@ import mars.defs;
 
 string insertIntoParameter(const(Table) table)
 {
-    return "insert into %s values (%s)"
-        .format(table.name, table.columns.map!( (c) => "$" ~ c.name).join(", "));
+    auto columns = table.decorateRows? table.decoratedCols : table.columns;
+    return "insert into %s (%s) values (%s)"
+        .format(table.name, columns.map!( (c) => c.name).join(", "), columns.map!( (c) => "$" ~ c.name).join(", "));
 }
 unittest {
     auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[],[]).insertIntoParameter;
-    assert( sql == "insert into bar values ($foo, $baz)", sql );
+    assert( sql == "insert into bar (foo, baz) values ($foo, $baz)", sql );
 }
 
 string updateParameter(const(Table) table)
@@ -45,26 +46,62 @@ unittest {
     assert( sql == "update bar set foo = $foo, baz = $baz where foo = $keyfoo", sql );
 }
 
+string updateDecorationsParameter(const(Table) table)
+{
+    if( table.pkCols.length >0 ){
+        return "update %s set %s where %s"
+            .format(
+                    table.name,
+                    ["mars_who = $mars_who", "mars_what = $mars_what", "mars_when = $mars_when"].join(", "),
+                    table.pkCols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+                   );
+    }
+    else {
+        return "update %s set %s where %s"
+            .format(
+                    table.name,
+                    ["mars_who = $mars_who", "mars_what = $mars_what", "mars_when = $mars_when"].join(", "),
+                    table.columns.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+                   );
+    }
+}
+
 string deleteFromParameter(const(Table) table)
 {
     if( table.pkCols.length >0 ){
         return "delete from %s where %s"
             .format(
                     table.name,
-                    table.pkCols.map!( (c) => c.name ~ " = $" ~ c.name).join(" AND "),
+                    table.pkCols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
                    );
     }
     else {
         return "delete from %s where %s"
             .format(
                     table.name,
-                    table.columns.map!( (c) => c.name ~ " = $" ~ c.name).join(" AND "),
+                    table.columns.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
                    );
     }
 }
 unittest {
     auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).deleteFromParameter;
-    assert( sql == "delete from bar where foo = $foo", sql );
+    assert( sql == "delete from bar where foo = $keyfoo", sql );
+}
+
+string pkValuesJs(const(Table) table)
+{
+    if( table.pkCols.length >0 ){
+        return "(function a(r){ return { %s }; })"
+            .format(
+                    table.pkCols.map!( (c) => "key" ~ c.name ~ ": r." ~ c.name).join(", "),
+                   );
+    }
+    else {
+        return "(function a(r){ return { %s }; })"
+            .format(
+                    table.columns.map!( (c) => "key" ~ c.name ~ ": r." ~ c.name).join(", "),
+                   );
+    }
 }
 
 string createDatabase(const(Schema) schema)
@@ -110,12 +147,13 @@ string createTable(const(Schema) schema, const(Table) table)
         return r;
     }
 
-    string cols = table.columns
+    string cols = (table.decorateRows? table.decoratedCols : table.columns)
         .map!( (c){ return c.asNameTypeNull; })
         .ctfeEnumerate
         //.map!(primaryKey!(EnumerateResult!(ulong, string)))
         .map!(references!(EnumerateResult!(ulong, string)))
         .join(", ");
+    
 
     string primaryKeys = "";
     if( table.primaryKey.length > 0 ){
@@ -133,6 +171,7 @@ unittest {
         immutable Table("bar3", [Col("foo", Type.text, false)], [], [Reference([0], "bar2", [1])]),
         immutable Table("bar4", [Col("foo", Type.text, false), Col("bar", Type.text, false)], [], [Reference([0,1], "bar1", [0,1])]),
         immutable Table("bar5", [Col("foo", Type.text, false), Col("bar", Type.text, false)], [0, 1], []),
+        immutable Table("bar6", [Col("foo", Type.text, false), Col("bar", Type.text, false)], [0, 1], [], 6, Yes.durable, Yes.decorateRows),
         ]);
     
         string sql = sc.createTable(sc.tables[0]);
@@ -145,6 +184,9 @@ unittest {
         assert(sql == "create table bar4 (foo text not null, bar text not null)", sql);
         sql = sc.createTable(sc.tables[4]);
         assert(sql == "create table bar5 (foo text not null, bar text not null, primary key (foo, bar))", sql);
+        sql = sc.createTable(sc.tables[5]);
+        assert(sql == "create table bar6 (foo text not null, bar text not null, mars_who text not null, mars_what text not null, mars_when text not null, primary key (foo, bar))", sql);
+
 }
 
 string asNameTypeNull(const(Col) col)

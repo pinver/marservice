@@ -102,6 +102,7 @@ class MarsServer
                 username = configuration.pgsqlUser;
                 sqlCreateDatabase = configuration.alasqlCreateDatabase;
                 sqlStatements = configuration.alasqlStatements;
+                jsStatements = configuration.jsStatements;
             }
             logInfo("mars - S --> C | autologin request, autologin for %s", configuration.pgsqlUser);
             client.sendRequest(request);
@@ -141,15 +142,20 @@ class MarsServer
 
     static MarsServerConfiguration ExposeSchema(immutable(Schema) schema)
     {
-        import mars.alasql : createDatabase, insertIntoParameter, updateParameter, deleteFromParameter;
+        import mars.alasql : createDatabase, insertIntoParameter, updateParameter, deleteFromParameter,
+               updateDecorationsParameter, pkValuesJs;
         
         immutable(string)[] statements;
+        immutable(string)[] jsStatements;
         foreach(table; schema.tables){
             statements ~= table.insertIntoParameter;
             statements ~= table.updateParameter;
             statements ~= table.deleteFromParameter;
+            statements ~= table.updateDecorationsParameter;
+            // update the 'indexStatementFor' below in this module...
+            jsStatements ~= table.pkValuesJs;
         }
-        return MarsServerConfiguration( schema, createDatabase(schema), statements );    
+        return MarsServerConfiguration( schema, createDatabase(schema), statements, jsStatements );
     }
 
     MarsServerConfiguration configuration;
@@ -225,11 +231,12 @@ class MarsServer
 __gshared MarsServer marsServer;
 
 ulong indexStatementFor(ulong table, string op){
-    enum ops = 3;
-     if     (op == "insert"){ return table * ops + 0; }
+    enum ops = 4; // XXX
+    if      (op == "insert"){ return table * ops + 0; }
     else  if(op == "update"){ return table * ops + 1; }
     else  if(op == "delete"){ return table * ops + 2; }
-     assert(false, "unknown ops!");
+    else  if(op == "updateDecorations"){ return table * ops + 3; }
+    assert(false, "unknown ops!");
 }
 
 struct MarsServerConfiguration
@@ -237,6 +244,7 @@ struct MarsServerConfiguration
     immutable(Schema) schemaExposed;
     string alasqlCreateDatabase;
     immutable(string)[] alasqlStatements;
+    immutable(string)[] jsStatements;
     immutable string[] serverMethods;
 
     
@@ -246,16 +254,16 @@ struct MarsServerConfiguration
 }
 
 static MarsServerConfiguration ExposeServerMethods(MarsServerConfiguration c, const string[] methods){
-    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, methods.idup,
-            c.databaseService, c.pgsqlUser, c.pgsqlPassword);
+    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.jsStatements, 
+            methods.idup, c.databaseService, c.pgsqlUser, c.pgsqlPassword);
 }
 
 MarsServerConfiguration PostgreSQL(MarsServerConfiguration c, const string host, const ushort port, const string db){
-    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.serverMethods,
-            DatabaseService(host, port, db), c.pgsqlUser, c.pgsqlPassword);
+    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.jsStatements, 
+            c.serverMethods, DatabaseService(host, port, db), c.pgsqlUser, c.pgsqlPassword);
 }
 
 MarsServerConfiguration Autologin(MarsServerConfiguration c, const string login, const string password){
-    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.serverMethods, c.databaseService,
-        login, password);
+    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.jsStatements, 
+            c.serverMethods, c.databaseService, login, password);
 }

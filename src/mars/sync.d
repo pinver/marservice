@@ -116,12 +116,26 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             auto resultSet = db.executeQueryUnsafe!(asStruct!table)("select * from %s limit %d offset %d".format(
                 table.name, limit, offset)
             );
-            asStruct!table[] rows;
-            foreach(v; resultSet){
-                rows ~= v;
-                //import std.stdio; writeln("selectRows:", v);
-                // XXX
+            static if( Definition.decorateRows ){
+                asSyncStruct!table[] rows;
+                foreach(vr; resultSet){
+                    asStruct!table v = vr;
+                    asSyncStruct!table r;
+                    assignCommonFields!(typeof(r), typeof(v))(r, v);
+                    r.mars_who = "automation";
+                    r.mars_what = "imported";
+                    r.mars_when = "now";
+                    rows ~= r;
+                }
             }
+            else {
+                asStruct!table[] rows;
+                foreach(v; resultSet){
+                    rows ~= v;
+                }
+            }
+            
+            
             resultSet.close();
             return rows;
         }

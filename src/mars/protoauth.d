@@ -60,6 +60,7 @@ void protoAuth(S)(MarsClient* client, S socket)
     if( dbAuthorised == AuthoriseError.authorised ){
         reply.sqlCreateDatabase = marsServer.configuration.alasqlCreateDatabase;
         reply.sqlStatements = marsServer.configuration.alasqlStatements;
+        reply.jsStatements = marsServer.configuration.jsStatements;
 
         // ... now that the client is authorised, expose the data to it
         marsServer.createClientSideTablesFor(client);

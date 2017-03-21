@@ -23,7 +23,14 @@ void protoInsertValueRequest(S)(MarsClient* client, S socket)
         reply[0], 
         reply[1], 
         tableIndex,
-        err == InsertError.inserted? indexStatementFor(tableIndex, "update").to!int : indexStatementFor(tableIndex, "delete").to!int, 
     );
+    if( err == InsertError.inserted ){
+        replyMsg.statementIndex = indexStatementFor(tableIndex, "update").to!int;
+        replyMsg.statementIndex2 = indexStatementFor(tableIndex, "updateDecorations").to!int;
+    }
+    else {
+        replyMsg.statementIndex = indexStatementFor(tableIndex, "updateDecorations").to!int;
+        replyMsg.statementIndex2 = indexStatementFor(tableIndex, "delete").to!int;
+    }
     socket.sendReply(insertValueRequest, replyMsg);
 }
