@@ -203,7 +203,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         }
         ColumnsStruct inserted = insertRecord(db, record, err, username, clientId);
         return [
-            inserted.pack!(true).idup, 
+            inserted.pack!(true).idup,
             record.pkParamValues!table().pack!(true).idup // clientKeys
         ];
     }
@@ -220,12 +220,12 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             err = DeleteError.unknownError;
             return data;
         }
-        deleteRecord(db, keys, err);
+        deleteRecord(db, keys, err, username, clientid);
         if( err != DeleteError.deleted ) return data;
         return [];
     }
 
-    asPkParamStruct!table deleteRecord(Database db, asPkParamStruct!table keys, ref DeleteError err){
+    asPkParamStruct!table deleteRecord(Database db, asPkParamStruct!table keys, ref DeleteError err, string username, string clientid){
         KeysStruct k;
         assignFields(k, keys);
         static if(table.durable){
@@ -235,9 +235,16 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             fixtures.remove(k);
             err = DeleteError.deleted;
         }
-        if( err == DeleteError.deleted ) toDelete[k] = 0;
-        foreach(ref cst; clientSideTables.values){
-            cst.ops ~= new ClientDeleteValues!ClientT();
+        if( err == DeleteError.deleted ){
+            static if(table.decorateRows){
+                toDelete[k] = Sync(username ~ "@" ~ clientid, "deleted", Clock.currTime.toString());
+            }
+            else {
+                toDelete[k] = 0;
+            }
+            foreach(ref cst; clientSideTables.values){
+                cst.ops ~= new ClientDeleteValues!ClientT();
+            }
         }
         return keys;
     }
@@ -246,7 +253,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     deprecated void updateRow(KeysStruct keys, ColumnsStruct record){
         //KeysStruct keys = pkValues!table(record);
         auto v = keys in toInsert;
-        if( v !is null ){ 
+        if( v !is null ){
             static if(table.decorateRows){
                 asSyncStruct!table rec;
                 assignCommonFields(rec, record);
@@ -256,7 +263,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
                 auto rec = record;
             }
             *v = rec;
-            assert( (keys in toUpdate) is null ); 
+            assert( (keys in toUpdate) is null );
         }
         else {
             auto v2 = keys in toUpdate;
@@ -280,7 +287,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 
             db.executeUpdate!(table, KeysStruct, ColumnsStruct)(keys, record);
             auto v = keys in toInsert;
-            if( v !is null ){ 
+            if( v !is null ){
                 static if(table.decorateRows){
                     asSyncStruct!table rec;
                     assignCommonFields(rec, record);
@@ -290,7 +297,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
                     auto rec = record;
                 }
                 *v = rec;
-                assert( (keys in toUpdate) is null ); 
+                assert( (keys in toUpdate) is null );
             }
             else {
                 auto v2 = keys in toUpdate;
@@ -305,7 +312,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         else {
             //KeysStruct keys = pkValues!table(record);
             auto v = keys in toInsert;
-            if( v !is null ){ 
+            if( v !is null ){
                 static if(table.decorateRows){
                     asSyncStruct!table rec;
                     assignCommonFields(rec, record);
@@ -315,7 +322,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
                     auto rec = record;
                 }
                 *v = record;
-                assert( (keys in toUpdate) is null ); 
+                assert( (keys in toUpdate) is null );
             }
             else {
                 v = keys in toUpdate;
@@ -355,10 +362,11 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     /// return the packet rows to delete in the client
     override immutable(ubyte)[] packRowsToDelete() {
         import msgpack : pack;
-        asPkParamStruct!(table)[] whereKeys;
+        asSyncPkParamStruct!(table)[] whereKeys;
         foreach(key; toDelete.keys()){
-            asPkParamStruct!table whereKey;
+            asSyncPkParamStruct!table whereKey;
             assignFields(whereKey, key);
+            static if(table.decorateRows) assignCommonFields(whereKey, toDelete[key]);
             whereKeys ~= whereKey;
         }
         auto packed = pack!(true)(whereKeys).idup;
@@ -397,12 +405,15 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 
     //static if( ! table.durable ){
         asStruct!(table)[asPkStruct!(table)] fixtures;
-        static if(table.decorateRows)
+        static if(table.decorateRows){
             asSyncStruct!(table)[asPkStruct!(table)] toInsert;
-        else
+            Sync[asPkStruct!(table)] toDelete;
+        }
+        else {
             asStruct!(table)[asPkStruct!(table)] toInsert;
+            int[asPkStruct!(table)] toDelete;
+        }
         asStruct!(table)[asPkStruct!(table)] toUpdate;
-        int[asPkStruct!(table)] toDelete;
 
         // ... record inserted client side, already patched and inserted for this client.
         //asStruct!(table)[string] notToInsert;
@@ -445,7 +456,6 @@ private
                 }
                 marsClient.sendRequest(req);
                 if(marsClient.isConnected) auto rep = marsClient.receiveReply!ImportRecordsRep();
-                
             }
         }
         override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)

@@ -63,6 +63,15 @@ unittest {
 }
 +/
 
+struct Sync {
+    string mars_who, mars_what, mars_when;
+}
+
+enum SyncCols = [
+    immutable(Col)("mars_who", Type.text, false), 
+    immutable(Col)("mars_what", Type.text, false), 
+    immutable(Col)("mars_when", Type.text, false),
+];
 
 struct Table { 
     string name;
@@ -75,13 +84,7 @@ struct Table {
 
     immutable(Schema)* schema;
 
-    @property immutable(Col)[] decoratedCols() const {
-        return columns ~ [
-            immutable(Col)("mars_who", Type.text, false), 
-            immutable(Col)("mars_what", Type.text, false), 
-            immutable(Col)("mars_when", Type.text, false),
-        ];
-    }
+    @property immutable(Col)[] decoratedCols() const { return columns ~ SyncCols; }
 
     /*
     If the table primary key is set by the terver, we need to return it to the client. */
@@ -252,6 +255,21 @@ template asPkParamStruct(alias t)
     mixin(def ~"; alias asPkParamStruct = " ~ structName ~ ";");
 }
 static assert(is(asPkStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [0], [])) == struct ));
+
+template asSyncPkParamStruct(alias t)
+{
+    static if( t.pkCols.length >0 ){
+        enum cols = t.pkCols ~ SyncCols;
+    }
+    else {
+        enum cols = t.decoratedCols;
+    }
+    enum string structName = t.name ~ "SyncPkParamRow";
+    enum string def = "struct " ~ structName ~ " {" ~ asStruct_!(cols, "key") ~ "}";
+    mixin(def ~"; alias asSyncPkParamStruct = " ~ structName ~ ";");
+}
+static assert(is(asPkParamStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [0], [])) == struct ));
+
 
 
 /**
