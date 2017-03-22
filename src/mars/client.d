@@ -130,12 +130,12 @@ struct MarsClient
     }
 
     immutable(ubyte)[][2] vueInsertRecord(int statementIndex, immutable(ubyte)[] record, ref InsertError err){
-        immutable(ubyte)[][2] inserted = marsServer.tables[statementIndex].insertRecord(db, record, err);
+        immutable(ubyte)[][2] inserted = marsServer.tables[statementIndex].insertRecord(db, record, err, username, id);
         return inserted;
     }
 
     immutable(ubyte)[] vueDeleteRecord(int tableIndex, immutable(ubyte)[] record, ref DeleteError err){
-        immutable(ubyte)[] deleted = marsServer.tables[tableIndex].deleteRecord(db, record, err);
+        immutable(ubyte)[] deleted = marsServer.tables[tableIndex].deleteRecord(db, record, err, username, id);
         return deleted;
     }
 

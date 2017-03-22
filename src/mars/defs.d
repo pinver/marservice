@@ -357,11 +357,9 @@ void assignCommonFields(R, V, size_t i = 0)(ref R r, V v)
 
     enum string Name = NamesV[i];
 
-    pragma(msg, "testing field======================= " ~ Name);
 
     enum j = staticIndexOf!(Name, NamesR);
     static if( j != -1 ){
-        pragma(msg, "present, assigning value");
         r.tupleof[j] = v.tupleof[i];
     }
     static if(i+1 < NamesV.length){
@@ -383,4 +381,19 @@ unittest
     assignCommonFields!(R, V)(r, v);
     assert( r == R("b", "a")) ;
 
+}
+
+void assignFields(R, V, size_t i = 0)(ref R r, V v)
+{
+    r.tupleof[i] = v.tupleof[i];
+    static if(i+1 < v.tupleof.length) assignFields!(R, V, i+1)(r, v);
+}
+unittest
+{
+    struct V { string a; int b;}
+    struct R { string c; int d;}
+    auto v = V("hello", 42);
+    R r;
+    assignFields(r, v);
+    assert( r == R("hello", 42) );
 }

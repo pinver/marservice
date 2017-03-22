@@ -147,6 +147,7 @@ class MarsServer
         
         immutable(string)[] statements;
         immutable(string)[] jsStatements;
+        jsStatements ~= jsIndexStatementFor;
         foreach(table; schema.tables){
             statements ~= table.insertIntoParameter;
             statements ~= table.updateParameter;
@@ -230,6 +231,7 @@ class MarsServer
 }
 __gshared MarsServer marsServer;
 
+// adjust the same function in mars.ts server
 ulong indexStatementFor(ulong table, string op){
     enum ops = 4; // XXX
     if      (op == "insert"){ return table * ops + 0; }
@@ -238,6 +240,17 @@ ulong indexStatementFor(ulong table, string op){
     else  if(op == "updateDecorations"){ return table * ops + 3; }
     assert(false, "unknown ops!");
 }
+enum jsIndexStatementFor = `(
+function a(table, op)
+{
+    const ops = 4;
+    if      (op == "insert"){ return table * ops + 0; }
+    else  if(op == "update"){ return table * ops + 1; }
+    else  if(op == "delete"){ return table * ops + 2; }
+    else  if(op == "updateDecorations"){ return table * ops + 3; }
+    alert("unknown ops!");
+})
+`;
 
 struct MarsServerConfiguration
 {

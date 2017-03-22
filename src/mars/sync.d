@@ -7,6 +7,7 @@
 module mars.sync;
 
 import std.algorithm;
+import std.datetime;
 import std.meta;
 import std.typecons;
 import std.experimental.logger;
@@ -56,8 +57,8 @@ class BaseServerSideTable(ClientT)
     abstract immutable(ubyte)[] packRowsToUpdate();
     abstract immutable(ubyte)[] packRowsToDelete();
 
-    abstract immutable(ubyte)[][2] insertRecord(Database, immutable(ubyte)[], ref InsertError);
-    abstract immutable(ubyte)[]    deleteRecord(Database, immutable(ubyte)[], ref DeleteError);
+    abstract immutable(ubyte)[][2] insertRecord(Database, immutable(ubyte)[], ref InsertError, string, string);
+    abstract immutable(ubyte)[]    deleteRecord(Database, immutable(ubyte)[], ref DeleteError, string, string);
 
     abstract void unsafeReset();
 
@@ -122,9 +123,9 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
                     asStruct!table v = vr;
                     asSyncStruct!table r;
                     assignCommonFields!(typeof(r), typeof(v))(r, v);
-                    r.mars_who = "automation";
+                    r.mars_who = "automation@server";
                     r.mars_what = "imported";
-                    r.mars_when = "now";
+                    r.mars_when = Clock.currTime.toString(); 
                     rows ~= r;
                 }
             }
@@ -149,32 +150,46 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     deprecated void insertRow(ColumnsStruct fixture){
         KeysStruct keys = pkValues!(table)(fixture);
         fixtures[keys] = fixture;
-        toInsert[keys] = fixture;
+        static if(table.decorateRows){
+            asSyncStruct!table rec;
+            assignCommonFields(rec, fixture);
+            with(rec){ mars_who = "automation@server"; mars_what = "inserted"; mars_when = Clock.currTime.toString(); }
+        }
+        else auto rec = fixture;
+        toInsert[keys] = rec;
         foreach(ref cst; clientSideTables.values){
             cst.ops ~= new ClientInsertValues!ClientT();
         }
     }
 
     /// insert a new row in the server table, turning clients table out of sync
-    ColumnsStruct insertRecord(Database db, ColumnsStruct record, ref InsertError err){
+    ColumnsStruct insertRecord(Database db, ColumnsStruct record, ref InsertError err, string username, string clientid){
+        KeysStruct keys = pkValues!table(record);
         static if(table.durable){
             auto inserted = db.executeInsert!(table, ColumnsStruct)(record, err);
-            KeysStruct keys = pkValues!table(record);
-            toInsert[keys] = record;
-        }
-        else {
-            auto inserted = record;
-            KeysStruct keys = pkValues!table(record);
+        } else {
             fixtures[keys] = record;
-            toInsert[keys] = record;
+            auto inserted = record;
+            err = InsertError.inserted;
         }
-        foreach(ref cst; clientSideTables.values){
-            cst.ops ~= new ClientInsertValues!ClientT();
+        if( err == InsertError.inserted ){
+            static if(table.decorateRows){
+                asSyncStruct!table rec;
+                assignCommonFields(rec, record);
+                with(rec){ mars_who = username ~ "@" ~ clientid; mars_what = "inserted"; mars_when = Clock.currTime.toString(); }
+            }
+            else {
+                auto rec = record;
+            }
+            toInsert[keys] = rec;
+            foreach(ref cst; clientSideTables.values){
+                cst.ops ~= new ClientInsertValues!ClientT();
+            }
         }
         return inserted;
     }
 
-    override immutable(ubyte)[][2] insertRecord(Database db, immutable(ubyte)[] data, ref InsertError err){
+    override immutable(ubyte)[][2] insertRecord(Database db, immutable(ubyte)[] data, ref InsertError err, string username, string clientId){
         import  msgpack : pack, unpack, MessagePackException;
         ColumnsStruct record;
         try {
@@ -186,40 +201,41 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             err = InsertError.unknownError;
             return [[], []];
         }
-        ColumnsStruct inserted = insertRecord(db, record, err);
+        ColumnsStruct inserted = insertRecord(db, record, err, username, clientId);
         return [
             inserted.pack!(true).idup, 
             record.pkParamValues!table().pack!(true).idup // clientKeys
         ];
     }
 
-    override immutable(ubyte)[] deleteRecord(Database db, immutable(ubyte)[] data, ref DeleteError err){
+    override immutable(ubyte)[] deleteRecord(Database db, immutable(ubyte)[] data, ref DeleteError err, string username, string clientid){
         import msgpack : pack, unpack, MessagePackException;
-        asStruct!table record;
+        asPkParamStruct!table keys;
         try {
-            record = unpack!(ColumnsStruct, true)(data);
+            keys = unpack!(asPkParamStruct!table, true)(data);
         }
         catch(MessagePackException exc){
-            errorf("mars - failed to unpack record to insert in '%s': maybe a wrong type of data in js", table.name);
+            errorf("mars - failed to unpack keys for record to delete '%s': maybe a wrong type of data in js", table.name);
             errorf(exc.toString);
             err = DeleteError.unknownError;
             return data;
         }
-        KeysStruct keys = record.pkValues!table();
         deleteRecord(db, keys, err);
         if( err != DeleteError.deleted ) return data;
         return [];
     }
 
-    KeysStruct deleteRecord(Database db, KeysStruct keys, ref DeleteError err){
+    asPkParamStruct!table deleteRecord(Database db, asPkParamStruct!table keys, ref DeleteError err){
+        KeysStruct k;
+        assignFields(k, keys);
         static if(table.durable){
-            db.executeDelete!(table, KeysStruct)(keys, err);
-            toDelete[keys] = 0;
+            db.executeDelete!(table, asPkParamStruct!table)(keys, err);
         }
         else {
-            fixtures.remove(keys);
-            toDelete[keys] = 0;
+            fixtures.remove(k);
+            err = DeleteError.deleted;
         }
+        if( err == DeleteError.deleted ) toDelete[k] = 0;
         foreach(ref cst; clientSideTables.values){
             cst.ops ~= new ClientDeleteValues!ClientT();
         }
@@ -231,13 +247,21 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         //KeysStruct keys = pkValues!table(record);
         auto v = keys in toInsert;
         if( v !is null ){ 
-            *v = record;
+            static if(table.decorateRows){
+                asSyncStruct!table rec;
+                assignCommonFields(rec, record);
+                with(rec){ mars_who = "who@where"; mars_what = "updated"; mars_when = Clock.currTime.toString(); }
+            }
+            else {
+                auto rec = record;
+            }
+            *v = rec;
             assert( (keys in toUpdate) is null ); 
         }
         else {
-            v = keys in toUpdate;
-            if( v !is null ){
-                *v = record;
+            auto v2 = keys in toUpdate;
+            if( v2 !is null ){
+                *v2 = record;
             }
             else {
                 toUpdate[keys] = record;
@@ -257,13 +281,21 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             db.executeUpdate!(table, KeysStruct, ColumnsStruct)(keys, record);
             auto v = keys in toInsert;
             if( v !is null ){ 
-                *v = record;
+                static if(table.decorateRows){
+                    asSyncStruct!table rec;
+                    assignCommonFields(rec, record);
+                    with(rec){ mars_who = "who@where"; mars_what = "updated"; mars_when = Clock.currTime.toString(); }
+                }
+                else {
+                    auto rec = record;
+                }
+                *v = rec;
                 assert( (keys in toUpdate) is null ); 
             }
             else {
-                v = keys in toUpdate;
-                if( v !is null ){
-                    *v = record;
+                auto v2 = keys in toUpdate;
+                if( v2 !is null ){
+                    *v2 = record;
                 }
                 else {
                     toUpdate[keys] = record;
@@ -274,6 +306,14 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             //KeysStruct keys = pkValues!table(record);
             auto v = keys in toInsert;
             if( v !is null ){ 
+                static if(table.decorateRows){
+                    asSyncStruct!table rec;
+                    assignCommonFields(rec, record);
+                    with(rec){ mars_who = "who@where"; mars_what = "updated"; mars_when = Clock.currTime.toString(); }
+                }
+                else {
+                    auto rec = record;
+                }
                 *v = record;
                 assert( (keys in toUpdate) is null ); 
             }
@@ -315,7 +355,13 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     /// return the packet rows to delete in the client
     override immutable(ubyte)[] packRowsToDelete() {
         import msgpack : pack;
-        auto packed = pack!(true)(toDelete.keys()).idup;
+        asPkParamStruct!(table)[] whereKeys;
+        foreach(key; toDelete.keys()){
+            asPkParamStruct!table whereKey;
+            assignFields(whereKey, key);
+            whereKeys ~= whereKey;
+        }
+        auto packed = pack!(true)(whereKeys).idup;
         //toInsert = null; can't reset... this is called for every client
         return packed;
     }
@@ -351,7 +397,10 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 
     //static if( ! table.durable ){
         asStruct!(table)[asPkStruct!(table)] fixtures;
-        asStruct!(table)[asPkStruct!(table)] toInsert;
+        static if(table.decorateRows)
+            asSyncStruct!(table)[asPkStruct!(table)] toInsert;
+        else
+            asStruct!(table)[asPkStruct!(table)] toInsert;
         asStruct!(table)[asPkStruct!(table)] toUpdate;
         int[asPkStruct!(table)] toDelete;
 
