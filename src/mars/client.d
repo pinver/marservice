@@ -111,6 +111,7 @@ struct MarsClient
         }
         else {
             db = databaseService.connect(username, pgpassword, err );
+            if(err != AuthoriseError.authorised) this.username = "";
         }
         return err;
     }
