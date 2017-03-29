@@ -197,10 +197,10 @@ class Database
         cmd.executeNonQuery();
     }
 
-    private {
-        PostgresDB db;
-        PGConnection conn;
-    }
+    //private {
+        private PostgresDB db;
+        public PGConnection conn;
+    //}
 }
 
 
