@@ -91,6 +91,20 @@ unittest {
 string pkValuesJs(const(Table) table)
 {
     if( table.pkCols.length >0 ){
+        return "(function a(r){ return { %s }; })".format(
+            table.pkCols.map!( (c) => c.name ~ ": r." ~ c.name).join(", "),
+        );
+    }
+    else {
+        return "(function a(r){ return { %s }; })".format(
+            table.columns.map!( (c) => c.name ~ ": r." ~ c.name).join(", "),
+        );
+    }
+}
+
+string pkValuesWhereJs(const(Table) table)
+{
+    if( table.pkCols.length >0 ){
         return "(function a(r){ return { %s }; })"
             .format(
                     table.pkCols.map!( (c) => "key" ~ c.name ~ ": r." ~ c.name).join(", "),
@@ -103,7 +117,6 @@ string pkValuesJs(const(Table) table)
                    );
     }
 }
-
 string createDatabase(const(Schema) schema)
 {
     return schema.tables.map!( t => createTable(schema, t) )().join("; ");
