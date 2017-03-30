@@ -370,8 +370,6 @@ void assignCommonFields(R, V, size_t i = 0)(ref R r, V v)
 {
     alias NamesR = FieldNameTuple!R;
     alias NamesV = FieldNameTuple!V;
-    pragma(msg, NamesV);
-    pragma(msg, NamesR);
 
     enum string Name = NamesV[i];
 
