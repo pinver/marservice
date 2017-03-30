@@ -288,49 +288,16 @@ unittest {
 
 /**
  * returns the values of the primary keys of this table row. */
-auto pkParamValues(alias table)(asStruct!table fixture)
+auto pkParamValues(alias table)(const asStruct!table fixture)
 {
-    asPkParamStruct!table keys;
-    // XXX fix with recursion
-    static if(table.primaryKey.length == 0){
-        static assert(keys.tupleof.length <=9, keys.tupleof.length);
-        static if(keys.tupleof.length == 1){ keys.tupleof[0] = fixture.tupleof[0]; }
-        static if(keys.tupleof.length == 2){ keys.tupleof[1] = fixture.tupleof[1]; }
-        static if(keys.tupleof.length == 3){ keys.tupleof[2] = fixture.tupleof[2]; }
-        static if(keys.tupleof.length == 4){ keys.tupleof[3] = fixture.tupleof[3]; }
-        static if(keys.tupleof.length == 5){ keys.tupleof[4] = fixture.tupleof[4]; }
-        static if(keys.tupleof.length == 6){ keys.tupleof[5] = fixture.tupleof[5]; }
-        static if(keys.tupleof.length == 7){ keys.tupleof[6] = fixture.tupleof[6]; }
-        static if(keys.tupleof.length == 8){ keys.tupleof[7] = fixture.tupleof[7]; }
-        static if(keys.tupleof.length == 9){ keys.tupleof[8] = fixture.tupleof[8]; }
-    }
-    else static if(table.primaryKey.length == 1){
-        keys.tupleof[0] = fixture.tupleof[table.primaryKey[0]];
-    }
-    else static if(table.primaryKey.length == 2){
-        keys.tupleof[0] = fixture.tupleof[0];
-        keys.tupleof[1] = fixture.tupleof[table.primaryKey[1]];
-    }
-    else static if(table.primaryKey.length == 3){
-        keys.tupleof[0] = fixture.tupleof[0];
-        keys.tupleof[1] = fixture.tupleof[table.primaryKey[1]];
-        keys.tupleof[2] = fixture.tupleof[table.primaryKey[2]];
-    }
-    else static if(table.primaryKey.length == 4){
-        keys.tupleof[0] = fixture.tupleof[0];
-        keys.tupleof[1] = fixture.tupleof[table.primaryKey[1]];
-        keys.tupleof[2] = fixture.tupleof[table.primaryKey[2]];
-        keys.tupleof[3] = fixture.tupleof[table.primaryKey[3]];
-    }
-    else static if(table.primaryKey.length == 5){
-        keys.tupleof[0] = fixture.tupleof[0];
-        keys.tupleof[1] = fixture.tupleof[table.primaryKey[1]];
-        keys.tupleof[2] = fixture.tupleof[table.primaryKey[2]];
-        keys.tupleof[3] = fixture.tupleof[table.primaryKey[3]];
-        keys.tupleof[4] = fixture.tupleof[table.primaryKey[4]];
-    }
-    else static assert(false);
-    return keys;
+    asPkStruct!table keys;
+    asPkParamStruct!table paramKeys;
+    assignCommonFields(keys, fixture);
+    assignFields(paramKeys, keys);
+    return paramKeys;
+}
+unittest {
+    static assert(luke.pkParamValues!People.keyname == "Luke");
 }
 
 void assignCommonFields(R, V, size_t i = 0)(ref R r, V v)
