@@ -9,6 +9,7 @@ import std.range;
 
 import mars.defs;
 import mars.msg : AuthoriseError, InsertError, DeleteError;
+version(unittest) import mars.starwars;
 
 import ddb.postgres;
 import ddb.db;
@@ -77,7 +78,7 @@ struct DatabaseService {
                     err = AuthoriseError.wrongUsernameOrPassword;
                     break;
                 default:
-                    logWarn("S -- C | Unhandled PostgreSQL server error during connection!");
+                    logWarn("S --- C | Unhandled PostgreSQL server error during connection!");
                     logInfo("S --- C | PostgreSQL server error: %s", e.toString);
                     err = AuthoriseError.unknownError;
             }
@@ -141,7 +142,7 @@ class Database
                     err = InsertError.duplicateKeyViolations;
                     break;
                 default:
-                    logWarn("S -- C | Unhandled PostgreSQL server error during insertion!");
+                    logWarn("S --- C | Unhandled PostgreSQL server error during insertion!");
                     logInfo("S --- C | PostgreSQL server error: %s", e.toString);
                     err = InsertError.unknownError;
             }
@@ -161,7 +162,7 @@ class Database
         catch(ServerErrorException e){
             switch(e.code){
                 default:
-                    logWarn("S -- C | Unhandled PostgreSQL server error during deletion!");
+                    logWarn("S --- C | Unhandled PostgreSQL server error during deletion!");
                     logInfo("S --- C | PostgreSQL server error: %s", e.toString);
                     err = DeleteError.unknownError;
             }
@@ -172,28 +173,8 @@ class Database
         enum sql = updateFromParameters(table);
         auto cmd = new PGCommand(conn, sql);
         addParameters!(table)(cmd, record);
-        /+static if( record.tupleof.length >= 1 ){ cmd.parameters.add(i++, table.columns[0].type.toPGType).value = record.tupleof[0]; }
-        static if( record.tupleof.length >= 2 ){ cmd.parameters.add(i++, table.columns[1].type.toPGType).value = record.tupleof[1]; }
-        static if( record.tupleof.length >= 3 ){ cmd.parameters.add(i++, table.columns[2].type.toPGType).value = record.tupleof[2]; }
-        static if( record.tupleof.length >= 4 ){ cmd.parameters.add(i++, table.columns[3].type.toPGType).value = record.tupleof[3]; }
-        static if( record.tupleof.length >= 5 ){ cmd.parameters.add(i++, table.columns[4].type.toPGType).value = record.tupleof[4]; }
-        static if( record.tupleof.length >= 6 ){ cmd.parameters.add(i++, table.columns[5].type.toPGType).value = record.tupleof[5]; }
-        static if( record.tupleof.length >= 7 ){ cmd.parameters.add(i++, table.columns[6].type.toPGType).value = record.tupleof[6]; }
-        static if( record.tupleof.length >= 8 ){ cmd.parameters.add(i++, table.columns[7].type.toPGType).value = record.tupleof[7]; }
-        static if( record.tupleof.length >= 9 ){ cmd.parameters.add(i++, table.columns[8].type.toPGType).value = record.tupleof[8]; }
-        static if( record.tupleof.length >= 10 ) static assert(false, record.tupleof.length);+/
         short i = record.tupleof.length +1;
         addParameters!table(cmd, pk, i);
-        /+static if( pk.tupleof.length >= 1 ){ cmd.parameters.add(i++, table.pkCols[0].type.toPGType).value = pk.tupleof[0]; }
-        static if( pk.tupleof.length >= 2 ){ cmd.parameters.add(i++, table.pkCols[1].type.toPGType).value = pk.tupleof[1]; }
-        static if( pk.tupleof.length >= 3 ){ cmd.parameters.add(i++, table.pkCols[2].type.toPGType).value = pk.tupleof[2]; }
-        static if( pk.tupleof.length >= 4 ){ cmd.parameters.add(i++, table.pkCols[3].type.toPGType).value = pk.tupleof[3]; }
-        static if( pk.tupleof.length >= 5 ){ cmd.parameters.add(i++, table.pkCols[4].type.toPGType).value = pk.tupleof[4]; }
-        static if( pk.tupleof.length >= 6 ){ cmd.parameters.add(i++, table.pkCols[5].type.toPGType).value = pk.tupleof[5]; }
-        static if( pk.tupleof.length >= 7 ){ cmd.parameters.add(i++, table.pkCols[6].type.toPGType).value = pk.tupleof[6]; }
-        static if( pk.tupleof.length >= 8 ){ cmd.parameters.add(i++, table.pkCols[7].type.toPGType).value = pk.tupleof[7]; }
-        static if( pk.tupleof.length >= 9 ){ cmd.parameters.add(i++, table.pkCols[8].type.toPGType).value = pk.tupleof[8]; }
-        static if( pk.tupleof.length >= 10){ static assert(false, pk.tupleof.length); }+/
         cmd.executeNonQuery();
     }
 
@@ -225,7 +206,7 @@ private {
             case date:
             case serial:
             case varchar: // varchar(n), tbd as column
-                              assert(false, t.to!string); // not implemented right now, catch at CT
+                assert(false, t.to!string); // not implemented right now, catch at CT
         }
     }
 
@@ -241,15 +222,7 @@ private {
         static if( s.tupleof.length > tupleofIndex+1 ) addParameters!(table, Struct, tupleofIndex +1)(cmd, s, ++paramIndex);
     }
 
-    version(unittest){
-        /+auto starwarSchema() pure {
-            return immutable(Schema)("sw", [
-                immutable(Table)("people", [Col("name", Type.text), Col("gender", Type.text)], [0], []),
-                immutable(Table)("species", [Col("name", Type.text)], [0], []),
-        ]);
-        }+/
-        import mars.starwars;
-    }
+
     string select(const(Select) stat){
         return `select %s from %s`.format(
             stat.cols.map!((c) => c.name).join(", "),
