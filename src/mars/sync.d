@@ -592,7 +592,7 @@ unittest
 /+
 unittest
 {
-    version(starwars){
+    version(unittest_starwars){
         import mars.starwars;
         enum schema = starwarsSchema();
 

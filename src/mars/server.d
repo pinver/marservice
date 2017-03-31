@@ -13,6 +13,7 @@ import mars.defs;
 import mars.sync;
 import mars.pgsql;
 import mars.msg;
+version(unittest) import mars.starwars;
 
 import vibe.core.log;
 import vibe.data.json;
@@ -24,8 +25,13 @@ void InstantiateTables(alias tables, F...)(MarsServer m, F fixtures) {
         InstantiateTables!(tables[1 .. $])(m, fixtures[1 .. $]);
     }
 }
+unittest {
+    MarsServer marsServer_ = new MarsServer(MarsServerConfiguration());
+    enum ctTables = starwarsSchema.tables[0 .. 2];
+    InstantiateTables!(ctTables)(marsServer_, [], []);
+}
 
-void InstantiateServerSideTable(immutable(Table) table, Fixtures)(MarsServer m, Fixtures fixtures){
+private void InstantiateServerSideTable(immutable(Table) table, Fixtures)(MarsServer m, Fixtures fixtures){
     auto serverSideTable = new ServerSideTable!(MarsClient*, table)();
     m.tables ~= serverSideTable;
   
