@@ -45,7 +45,7 @@ struct Schema {
     string name;
     immutable(Table)[] tables;
 
-    auto tableNamed(string name) const {
+    immutable(Table) tableNamed(string name) const @safe {
         return tables.find!((t) => t.name == name)[0];
     }
 }
