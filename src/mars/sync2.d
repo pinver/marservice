@@ -9,7 +9,7 @@ import mars.defs;
 
 alias Bytes = immutable(ubyte)[];
 
-enum Operation { Ins, Committed, Upd, OptInsOk }
+enum Operation { Ins, Committed, Upd, ConfirmIns }
 struct DeltaOperation {
     Operation operation;
     Bytes key;
@@ -217,7 +217,7 @@ struct ClientSideTable {
             else {
                 auto row = op.key in rows;
                 assert(row !is null);
-                if(op.operation == Operation.OptInsOk)
+                if(op.operation == Operation.ConfirmIns)
                     *row = Row(op.key, op.record, Row.inserted, op.when, op.by);
                 else 
                     *row = Row(op.key, op.record, Row.updated, op.when, op.by);
@@ -250,7 +250,7 @@ struct ClientSideTable {
             else if(crow.state == Row.optInserted){
                 assert( (keys in sst.rows) is null );
                 sst.rows[keys] = Row(keys, crow.record, Row.inserted, crow.when, crow.by, crow.revision);
-                delta ~= DeltaOperation(Operation.OptInsOk, crow.keys, crow.record, crow.by, crow.when, crow.revision);
+                delta ~= DeltaOperation(Operation.ConfirmIns, crow.keys, crow.record, crow.by, crow.when, crow.revision);
             }
             sst.revision = max(sst.revision, crow.revision);
         }
