@@ -13,11 +13,11 @@ module mars.starwars;
                 immutable(Table)("scores", [Col("score", Type.integer)], [], [], 3, No.durable),
         ]);
     }
-    auto People(){ return starwarsSchema.tables[0]; };
+    auto People(){ return starwarsSchema.tableNamed("people"); };
     alias Person = asStruct!People;
     const static luke = Person("Luke", "male", [0xDE, 0xAD, 0xBE, 0xEF], 1.72);
     static leila = Person("Leila", "female", [0xCA, 0xFE, 0xBA, 0xBE], 1.70);
 
-    alias Planet = asStruct!(starwarsSchema.tables[2]);
+    alias Planet = asStruct!(starwarsSchema.tableNamed("planets"));
     static tatooine = Planet("Tatooine", 120_000);
 //}
