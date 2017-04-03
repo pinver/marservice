@@ -2,9 +2,16 @@
 
 /**
   gestiamo la parte di sincronia tra server e le varie tavole associate ai client.
-  */
 
+
+  */
 module mars.sync;
+
+enum d =
+`
+BaseServerSideTable
+    clientSideTables[clientId] --- SyncOps[]
+`;
 
 import std.algorithm;
 import std.datetime;
@@ -19,6 +26,12 @@ import mars.pgsql;
 import mars.msg;
 import mars.server;
 
+/**
+A server side table is instantiated only once per marsServer, and they are stored into the 'tables'
+structure of the marsServer.
+
+The instantiation usually is inside the application code: `InstantiateTables!(ctTables)(marsServer, [], [], [], [])`
+*/
 class BaseServerSideTable(ClientT)
 {
     alias ClientType = ClientT;

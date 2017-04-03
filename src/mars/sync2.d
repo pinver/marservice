@@ -53,7 +53,9 @@ unittest {
     assert(bob.count == 0 && alice.count == 0);
     assert(bob.revision == 0 && alice.revision == 0 && sst.revision == 1);
 
+    // ... il delta è qualcosa che noi inviamo al client, via websocket ...`
     auto delta = sst.syncDeltaFor(bob);
+    // ... una volta che il client ci ha risposto, possiamo aggiornare la sua rappresentazione qua ...
     bob.applyDelta(delta);
     assert(bob.revision ==1);
 
@@ -68,6 +70,8 @@ unittest {
     assert(bob.row(k1).state == Row.optUpdated && bob.row(k2).state == Row.optInserted);
     assert(bob.revision ==3);
 
+    // applichiamo al server quanto abbiamo ricevuto dal web, via websocket: il delta racchiude le operazioni da inviare al client per
+    // conferma o aggiornamento ....
     delta = bob.commitOrRollback(sst);
     // noi ci siamo aggiornati, il server ha fatto, non si torna indietro.
     assert(sst.row(k1).record == r3 && sst.row(k2).record == r2 && sst.revision ==3);
@@ -75,6 +79,7 @@ unittest {
 
     // ... aggiorniamo alice
     delta = sst.syncDeltaFor(alice);
+    // ... alice ha eseguito il delta, prendiamone atto ...
     alice.applyDelta(delta);
     assert(alice.row(k1).record == r3 && sst.row(k1).by == "Bob" && alice.revision ==3);
     
@@ -107,7 +112,7 @@ unittest
 @safe:
 
 interface Database {
-    Bytes keysOf(Bytes) const;
+    Bytes keysOf(Bytes) const; // XXX come minimo deve essere incluso il nome della table, o come fa a capire di quale?
 }
 class MockDatabase : Database {
     Bytes keysOf(Bytes record) const { return record[0 .. 1]; }

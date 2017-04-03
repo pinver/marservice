@@ -9,6 +9,7 @@ int main()
     import vibe.core.core : runApplication;
 
     import vibe.data.json : Json;
+    import mars.sync2;
 
     string exposedMethods(MarsClient marsClient, string methodName, Json parameters){
         switch(methodName){
