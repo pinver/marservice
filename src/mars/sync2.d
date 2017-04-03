@@ -9,7 +9,7 @@ import mars.defs;
 
 alias Bytes = immutable(ubyte)[];
 
-enum Operation { Ins, Committed, Upd }
+enum Operation { Ins, Committed, Upd, OptInsOk }
 struct DeltaOperation {
     Operation operation;
     Bytes key;
@@ -73,6 +73,8 @@ unittest {
     delta = bob.commitOrRollback(sst);
     // noi ci siamo aggiornati, il server ha fatto, non si torna indietro.
     assert(sst.row(k1).record == r3 && sst.row(k2).record == r2 && sst.revision ==3);
+    // inviamo il delta a bob... quanto lo ha eseguito, aggiorniamoci 
+    bob.applyDelta(delta);
     assert(bob.row(k1).state == Row.updated && bob.row(k2).state == Row.inserted);
 
     // ... aggiorniamo alice
@@ -215,7 +217,10 @@ struct ClientSideTable {
             else {
                 auto row = op.key in rows;
                 assert(row !is null);
-                *row = Row(op.key, op.record, Row.updated, op.when, op.by);
+                if(op.operation == Operation.OptInsOk)
+                    *row = Row(op.key, op.record, Row.inserted, op.when, op.by);
+                else 
+                    *row = Row(op.key, op.record, Row.updated, op.when, op.by);
             }
             revision = max(revision, op.revision);
         }
@@ -234,21 +239,22 @@ struct ClientSideTable {
         rows[keys] = Row(keys, record, Row.optInserted, when, by, ++revision);
     }
 
-    Delta commitOrRollback(ref ServerSideTable sst) { 
+    Delta commitOrRollback(ref ServerSideTable sst) {
+        Delta delta;
         foreach(keys, ref crow; rows){
             if(crow.state == Row.optUpdated){
                 auto srow = keys in sst.rows; assert(srow !is null);
                 *srow = Row(crow.keys, crow.record, Row.updated, crow.when, crow.by, crow.revision);
-                crow.state = Row.updated;
+                delta ~= DeltaOperation(Operation.Upd, crow.keys, crow.record, crow.by, crow.when, crow.revision);
             }
             else if(crow.state == Row.optInserted){
                 assert( (keys in sst.rows) is null );
                 sst.rows[keys] = Row(keys, crow.record, Row.inserted, crow.when, crow.by, crow.revision);
-                crow.state = Row.inserted;
+                delta ~= DeltaOperation(Operation.OptInsOk, crow.keys, crow.record, crow.by, crow.when, crow.revision);
             }
             sst.revision = max(sst.revision, crow.revision);
         }
-        return []; 
+        return delta; 
     }
 
     DatabaseTable db;
