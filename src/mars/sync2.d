@@ -44,10 +44,10 @@ unittest {
     auto t1 = SysTime(DateTime(2017, 01, 01, 1, 0));
     auto t2 = SysTime(DateTime(2017, 01, 01, 2, 0));
 
-    auto db = new MockDatabase();
+    auto db = new MockSimpleDatabaseTable();
     auto sst = ServerSideTable(db);
-    auto bob = ClientSideTable("Bob");
-    auto alice = ClientSideTable("Alice");
+    auto bob = ClientSideTable(db, "Bob");
+    auto alice = ClientSideTable(db, "Alice");
 
     sst.insertRow(r1, t0);
     assert(bob.count == 0 && alice.count == 0);
@@ -64,9 +64,7 @@ unittest {
 
     // client, arrivano una serie di operazioni da fare. Devo tornare una sequenza di cose da fare lato client.
     bob.updateRow(k1, r3, t1);
-    bob.insertRow(k2, r2, t1); // XXX per togliere k2, devo dare a bob un db, in modo che sappia estrarre k2 da r2? naaaa..... o si? e se
-    //                            facessi un interfaccia minore per fare questi lavori sui record?
-    //                            valuta una terzo oggetto, che si occupa del pack!() del record
+    bob.insertRow(    r2, t1);                      
     assert(bob.row(k1).state == Row.optUpdated && bob.row(k2).state == Row.optInserted);
     assert(bob.revision ==3);
 
@@ -98,38 +96,36 @@ unittest
 {
     import mars.starwars;
     auto schema = starwarsSchema();
-    auto db = new MockDatabase2!(schema);
+    auto db = new MockDatabase!(schema);
 
     auto dbPeople = db.table!"people";
     dbPeople.insertRow("Luke", "male", [0xDE, 0xAD, 0xBE, 0xEF], 1.72);
     dbPeople.insertRow("Leila", "female", [0xCA, 0xFE, 0xBA, 0xBE], 1.70);
 
-    auto sst = ServerSideTable(db);
-    auto bob = ClientSideTable("Bob");
-    auto alice = ClientSideTable("Alice");
+    auto sst = ServerSideTable(dbPeople);
+    auto bob = ClientSideTable(dbPeople, "Bob");
+    auto alice = ClientSideTable(dbPeople, "Alice");
 }
 
 @safe:
 
-interface Database {
-    Bytes keysOf(Bytes) const; // XXX come minimo deve essere incluso il nome della table, o come fa a capire di quale?
+interface DatabaseTable {
+    Bytes keysOf(Bytes) const;
 }
-class MockDatabase : Database {
+class MockSimpleDatabaseTable : DatabaseTable {
     Bytes keysOf(Bytes record) const { return record[0 .. 1]; }
 }
 
-class MockDatabase2(immutable(Schema) schema) : Database
+class MockDatabase(immutable(Schema) schema)
 {
     enum Schema = schema;
     
     auto table(string name)(){ 
-        return DatabaseTable!(typeof(this), name)(this); 
+        return new MockDatabaseTable!(typeof(this), name)(this); 
     }
-
-    Bytes keysOf(Bytes record) const { return []; }
 }
 
-struct DatabaseTable(D, string N) {
+class MockDatabaseTable(D, string N) : DatabaseTable {
     alias Name = N;
     enum Table = D.Schema.tableNamed(Name);
     enum Columns = Table.columns;
@@ -142,12 +138,14 @@ struct DatabaseTable(D, string N) {
 
     }
 
+    Bytes keysOf(Bytes record) const { return record[0 .. 1]; }
+
     D db;
 }
 
 
 struct ServerSideTable {
-    Database db;
+    DatabaseTable db;
 
     void insertRow(Bytes record, SysTime when) {
         auto keys = db.keysOf(record);
@@ -202,7 +200,8 @@ struct ServerSideTable {
 }
 
 struct ClientSideTable {
-    this(string by) {
+    this(DatabaseTable db, string by) {
+        this.db = db;
         this.by = by;
         rows[ [0] ] = Row.init; rows.remove([0]);
     }
@@ -229,7 +228,8 @@ struct ClientSideTable {
         *row = Row(keys, record, Row.optUpdated, when, by, ++revision);
     }
 
-    void insertRow(Bytes keys, Bytes record, SysTime when) {
+    void insertRow(Bytes record, SysTime when) {
+        Bytes keys = this.db.keysOf(record);
         assert( (keys in rows) is null );
         rows[keys] = Row(keys, record, Row.optInserted, when, by, ++revision);
     }
@@ -251,6 +251,7 @@ struct ClientSideTable {
         return []; 
     }
 
+    DatabaseTable db;
     string by;
     Row[Bytes] rows;
     ulong revision;
