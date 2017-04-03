@@ -137,12 +137,16 @@ class MockDatabaseTable(D, string N) : DatabaseTable {
 
     void insertRow(RecordTypes values){
         auto record = asStruct!(Table)(values);
-
+        asPkStruct!Table keys;
+        assignCommonFields(keys, record);
+        assert((keys in fixtures) is null);
+        fixtures[keys] = record;
     }
 
     Bytes keysOf(Bytes record) const { return record[0 .. 1]; }
 
     D db;
+    asStruct!Table[asPkStruct!Table] fixtures;
 }
 
 
