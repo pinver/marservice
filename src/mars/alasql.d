@@ -24,64 +24,41 @@ unittest {
 
 string updateParameter(const(Table) table)
 {
-    if( table.pkCols.length >0 ){
-        return "update %s set %s where %s"
-            .format(
-                    table.name,
-                    table.columns.map!( (c) => c.name ~ " = $" ~ c.name).join(", "),
-                    table.pkCols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
-                   );
-    }
-    else {
-        return "update %s set %s where %s"
-            .format(
-                    table.name,
-                    table.columns.map!( (c) => c.name ~ " = $" ~ c.name).join(", "),
-                    table.columns.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
-                   );
-    }
+    auto cols = table.pkCols.length >0? table.pkCols : table.columns;
+    return "update %s set %s where %s".format(
+        table.name,
+        table.columns.map!( (c) => c.name ~ " = $" ~ c.name).join(", "),
+        cols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+    );
 }
 unittest {
     auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).updateParameter;
     assert( sql == "update bar set foo = $foo, baz = $baz where foo = $keyfoo", sql );
+    auto sql2 = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[],[]).updateParameter;
+    assert( sql2 == "update bar set foo = $foo, baz = $baz where foo = $keyfoo AND baz = $keybaz", sql2 );
 }
 
 string updateDecorationsParameter(const(Table) table)
 {
-    if( table.pkCols.length >0 ){
-        return "update %s set %s where %s"
-            .format(
-                    table.name,
-                    ["mars_who = $mars_who", "mars_what = $mars_what", "mars_when = $mars_when"].join(", "),
-                    table.pkCols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
-                   );
-    }
-    else {
-        return "update %s set %s where %s"
-            .format(
-                    table.name,
-                    ["mars_who = $mars_who", "mars_what = $mars_what", "mars_when = $mars_when"].join(", "),
-                    table.columns.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
-                   );
-    }
+    auto cols = table.pkCols.length >0? table.pkCols : table.columns;
+    return "update %s set %s where %s".format(
+        table.name,
+        ["mars_who = $mars_who", "mars_what = $mars_what", "mars_when = $mars_when"].join(", "),
+        cols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+    );
+}
+unittest {
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).updateDecorationsParameter;
+    assert( sql == "update bar set mars_who = $mars_who, mars_what = $mars_what, mars_when = $mars_when where foo = $keyfoo", sql );
 }
 
 string deleteFromParameter(const(Table) table)
 {
-    if( table.pkCols.length >0 ){
-        return "delete from %s where %s"
-            .format(
-                    table.name,
-                    table.pkCols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
-                   );
-    }
-    else {
-        return "delete from %s where %s"
-            .format(
-                    table.name,
-                    table.columns.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
-                   );
-    }
+    auto cols = table.pkCols.length >0? table.pkCols : table.columns;
+    return "delete from %s where %s".format(
+        table.name,
+        cols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+    );
 }
 unittest {
     auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).deleteFromParameter;
@@ -90,33 +67,28 @@ unittest {
 
 string pkValuesJs(const(Table) table)
 {
-    if( table.pkCols.length >0 ){
-        return "(function a(r){ return { %s }; })".format(
-            table.pkCols.map!( (c) => c.name ~ ": r." ~ c.name).join(", "),
-        );
-    }
-    else {
-        return "(function a(r){ return { %s }; })".format(
-            table.columns.map!( (c) => c.name ~ ": r." ~ c.name).join(", "),
-        );
-    }
+    auto cols = table.pkCols.length >0? table.pkCols : table.columns;
+    return "(function a(r){ return { %s }; })".format(
+        cols.map!( (c) => c.name ~ ": r." ~ c.name).join(", "),
+    );
+}
+unittest {
+    auto js = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).pkValuesJs;
+    assert( js == "(function a(r){ return { foo: r.foo }; })", js);
 }
 
 string pkValuesWhereJs(const(Table) table)
 {
-    if( table.pkCols.length >0 ){
-        return "(function a(r){ return { %s }; })"
-            .format(
-                    table.pkCols.map!( (c) => "key" ~ c.name ~ ": r." ~ c.name).join(", "),
-                   );
-    }
-    else {
-        return "(function a(r){ return { %s }; })"
-            .format(
-                    table.columns.map!( (c) => "key" ~ c.name ~ ": r." ~ c.name).join(", "),
-                   );
-    }
+    auto cols = table.pkCols.length >0? table.pkCols : table.columns;
+    return "(function a(r){ return { %s }; })".format(
+        cols.map!( (c) => "key" ~ c.name ~ ": r." ~ c.name).join(", "),
+    );
 }
+unittest {
+    auto js = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).pkValuesWhereJs;
+    assert( js == "(function a(r){ return { keyfoo: r.foo }; })", js);
+}
+
 string createDatabase(const(Schema) schema)
 {
     return schema.tables.map!( t => createTable(schema, t) )().join("; ");
