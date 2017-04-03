@@ -5,6 +5,10 @@
 
 module mars.server;
 
+import std.algorithm.iteration, std.array, std.conv, std.format;
+      
+       
+
 import std.experimental.logger;
 
 import mars.client;
@@ -153,7 +157,9 @@ class MarsServer
         
         immutable(string)[] statements;
         immutable(string)[] jsStatements;
+  
         jsStatements ~= jsIndexStatementFor;
+        jsStatements ~= `[%s]`.format(schema.tables.map!((t) => t.decorateRows.to!string).join(", ").array);
         foreach(table; schema.tables){
             statements ~= table.insertIntoParameter;
             statements ~= table.updateParameter;
@@ -274,16 +280,16 @@ struct MarsServerConfiguration
 }
 
 static MarsServerConfiguration ExposeServerMethods(MarsServerConfiguration c, const string[] methods){
-    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.jsStatements, 
+    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.jsStatements,
             methods.idup, c.databaseService, c.pgsqlUser, c.pgsqlPassword);
 }
 
 MarsServerConfiguration PostgreSQL(MarsServerConfiguration c, const string host, const ushort port, const string db){
-    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.jsStatements, 
+    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.jsStatements,
             c.serverMethods, DatabaseService(host, port, db), c.pgsqlUser, c.pgsqlPassword);
 }
 
 MarsServerConfiguration Autologin(MarsServerConfiguration c, const string login, const string password){
-    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.jsStatements, 
+    return MarsServerConfiguration(c.schemaExposed, c.alasqlCreateDatabase, c.alasqlStatements, c.jsStatements,
             c.serverMethods, c.databaseService, login, password);
 }
