@@ -10,7 +10,14 @@ import std.range;
 
 import mars.defs;
 
-
+string selectFrom(const(Table) table)
+{
+    return "select * from %s".format(table.name);
+}
+unittest {
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[],[]).selectFrom;
+    assert( sql == "select * from bar", sql );
+}
 string insertIntoParameter(const(Table) table)
 {
     auto columns = table.decorateRows? table.decoratedCols : table.columns;

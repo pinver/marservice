@@ -140,6 +140,10 @@ struct MarsClient
         return deleted;
     }
 
+    void vueUpdateRecord(ulong tableIndex, immutable(ubyte)[] keys, immutable(ubyte)[] record, ref RequestState state){
+        marsServer.tables[tableIndex].updateRecord(db, keys, record, state);
+    }
+
     private {
         string id_;
 

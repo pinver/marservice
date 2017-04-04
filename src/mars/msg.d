@@ -1,11 +1,36 @@
 module mars.msg;
 
+enum RequestState 
+{
+    executed,
+
+    // ... client side bugs or tampering of the request
+    rejectedAsDecodingFailed, /// the deconding of the data is failed
+    rejectedAsWrongParameter, /// the value of one of the request parameters is wrong.
+    rejectedAsPGSqlError,     /// PostgreSQL unhandled error
+    internalServerError,
+}
 enum MsgTypeStoC {
     autologinReq     = 60, autologinRep,
     syncOperationReq = 62, syncOperationRep,
     importRecordsReq = 64, importRecordsRep,
     deleteRecordsReq = 66, deleteRecordsRep,
     insertRecordsReq = 68, insertRecordsRep,
+}
+
+// request an update of a record to the server, that the client has optimistically updated
+struct OptUpdateReq 
+{
+    static immutable type = MsgType.optUpdateReq;
+    ulong tableIndex;           /// the index identifier of the updated table.
+    immutable(ubyte)[] keys;    /// the primary keys of the record to update
+    immutable(ubyte)[] record;  /// the new values for that record
+}
+
+struct OptUpdateRep 
+{
+    static immutable type = MsgType.optUpdateRep;
+    RequestState state;
 }
 
 struct AutologinReq
@@ -78,6 +103,9 @@ enum MsgType {
     insertValuesRequest  = 24, insertValuesReply,
     updateValuesRequest  = 26, updateValuesReply,
     deleteRecordRequest  = 28, deleteRecordReply,
+
+    optUpdateReq = 50, optUpdateRep = 51, // request the server to perform an update and confirm an optimistic one
+
 
     welcomeBroadcast = 100, goodbyBroadcast,
 

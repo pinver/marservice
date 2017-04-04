@@ -13,6 +13,7 @@ import mars.protoauth;
 import mars.protocallmethod;
 import mars.protoinsertvaluerequest;
 import mars.protodeleterecordrequest;
+import mars.protoupd;
 
 void protoMars(S)(MarsClient* client, S socket_)
 {
@@ -77,6 +78,11 @@ void protoMars(S)(MarsClient* client, S socket_)
 
             case deleteRecordReply:
                 logInfo("mars - S<--%s - received an deleteRecordReply", client.id);
+                break;
+
+            case optUpdateReq:
+                logInfo("mars - S<--%s - received an update originating from an optimistic client update", client.id);
+                protoOptUpdate(client, socket);
                 break;
 
             default:

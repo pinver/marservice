@@ -21,6 +21,8 @@ import std.experimental.logger;
 import std.format;
 import std.conv;
 
+import msgpack;
+
 import mars.defs;
 import mars.pgsql;
 import mars.msg;
@@ -71,6 +73,7 @@ class BaseServerSideTable(ClientT)
     abstract immutable(ubyte)[] packRowsToDelete();
 
     abstract immutable(ubyte)[][2] insertRecord(Database, immutable(ubyte)[], ref InsertError, string, string);
+    abstract void updateRecord(Database, immutable(ubyte)[], immutable(ubyte)[], ref RequestState);
     abstract immutable(ubyte)[]    deleteRecord(Database, immutable(ubyte)[], ref DeleteError, string, string);
 
     abstract void unsafeReset();
@@ -221,6 +224,29 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         ];
     }
 
+    override void updateRecord(Database db, immutable(ubyte)[] encodedKeys, immutable(ubyte)[] encodedRecord, ref RequestState state){
+        asPkStruct!table keys;
+        ColumnsStruct record;
+        try { 
+            keys = unpack!(asPkStruct!table, true)(encodedKeys); 
+            record = unpack!(ColumnsStruct, true)(encodedRecord);
+        }
+        catch(MessagePackException exc){
+            errorf("mars - failed to unpack keys for record to update '%s': maybe a wrong type of data in js", table.name);
+            errorf(exc.toString);
+            state = RequestState.rejectedAsDecodingFailed;
+            return;
+        }
+        updateRecord(db, keys, record, state);
+    }
+
+    void updateRecord(Database db, asPkStruct!table keys, ColumnsStruct record, ref RequestState state){
+        static if(table.durable){
+            db.executeUpdate!(table, asPkStruct!table, ColumnsStruct)(keys, record, state);
+        }
+        else { assert(false); }
+    }
+
     override immutable(ubyte)[] deleteRecord(Database db, immutable(ubyte)[] data, ref DeleteError err, string username, string clientid){
         import msgpack : pack, unpack, MessagePackException;
         asPkParamStruct!table keys;
@@ -298,7 +324,8 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         static if( table.durable ){
             import msgpack : pack;
 
-            db.executeUpdate!(table, KeysStruct, ColumnsStruct)(keys, record);
+            RequestState state;
+            db.executeUpdate!(table, KeysStruct, ColumnsStruct)(keys, record, state);
             auto v = keys in toInsert;
             if( v !is null ){
                 static if(table.decorateRows){

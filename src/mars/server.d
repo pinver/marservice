@@ -152,7 +152,7 @@ class MarsServer
 
     static MarsServerConfiguration ExposeSchema(immutable(Schema) schema)
     {
-        import mars.alasql : createDatabase, insertIntoParameter, updateParameter, deleteFromParameter,
+        import mars.alasql : createDatabase, selectFrom, insertIntoParameter, updateParameter, deleteFromParameter,
                updateDecorationsParameter, pkValuesJs, pkValuesWhereJs;
         
         immutable(string)[] statements;
@@ -165,6 +165,7 @@ class MarsServer
             statements ~= table.updateParameter;
             statements ~= table.deleteFromParameter;
             statements ~= table.updateDecorationsParameter;
+            statements ~= table.selectFrom;
             // update the 'indexStatementFor' below in this module...
             jsStatements ~= table.pkValuesJs;
             jsStatements ~= table.pkValuesWhereJs;
@@ -246,21 +247,23 @@ __gshared MarsServer marsServer;
 
 // adjust the same function in mars.ts server
 ulong indexStatementFor(ulong table, string op){
-    enum ops = 4; // XXX
+    enum ops = 5; // XXX
     if      (op == "insert"){ return table * ops + 0; }
     else  if(op == "update"){ return table * ops + 1; }
     else  if(op == "delete"){ return table * ops + 2; }
     else  if(op == "updateDecorations"){ return table * ops + 3; }
+    else  if(op == "select"){ return table * ops + 4; }
     assert(false, "unknown ops!");
 }
 enum jsIndexStatementFor = `(
 function a(table, op)
 {
-    const ops = 4;
+    const ops = 5;
     if      (op == "insert"){ return table * ops + 0; }
     else  if(op == "update"){ return table * ops + 1; }
     else  if(op == "delete"){ return table * ops + 2; }
     else  if(op == "updateDecorations"){ return table * ops + 3; }
+    else  if(op == "select"){ return table * ops + 4; }
     alert("unknown ops!");
 })
 `;

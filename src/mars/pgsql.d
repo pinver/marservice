@@ -8,7 +8,7 @@ import std.string;
 import std.range;
 
 import mars.defs;
-import mars.msg : AuthoriseError, InsertError, DeleteError;
+import mars.msg : AuthoriseError, InsertError, DeleteError, RequestState;
 version(unittest) import mars.starwars;
 
 import ddb.postgres;
@@ -169,13 +169,26 @@ class Database
         }
     }
 
-    void executeUpdate(immutable(Table) table, Pk, Row)(Pk pk, Row record){
+    void executeUpdate(immutable(Table) table, Pk, Row)(Pk pk, Row record, ref RequestState state){
         enum sql = updateFromParameters(table);
         auto cmd = new PGCommand(conn, sql);
         addParameters!(table)(cmd, record);
         short i = record.tupleof.length +1;
         addParameters!table(cmd, pk, i);
-        cmd.executeNonQuery();
+        try {
+            logWarn("OKKKKKKK? %s", sql);
+            logWarn("OKKKKKKK? %s %s", pk, record);
+
+            cmd.executeNonQuery();
+        }
+        catch(ServerErrorException e){
+            switch(e.code){
+                default:
+                    logWarn("S --- C | Unhandled PostgreSQL server error during update!");
+                    logInfo("S --- C | PostgreSQL server error: %s", e.toString);
+                    state = RequestState.rejectedAsPGSqlError;
+            }
+        }
     }
 
     //private {
