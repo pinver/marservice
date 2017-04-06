@@ -160,6 +160,7 @@ class MarsServer
   
         jsStatements ~= jsIndexStatementFor;
         jsStatements ~= `[%s]`.format(schema.tables.map!((t) => t.decorateRows.to!string).join(", ").array);
+        jsStatements ~= `[%s]`.format(schema.tables.map!((t) => t.cacheRows.to!string).join(", ").array);
         foreach(table; schema.tables){
             statements ~= table.insertIntoParameter;
             statements ~= table.updateParameter;

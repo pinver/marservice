@@ -83,6 +83,7 @@ struct Table {
     size_t index; /// the unique index of the table in the system.
     bool durable = true;
     bool decorateRows = false;
+    bool cacheRows = true;
 
     immutable(Schema)* schema;
 

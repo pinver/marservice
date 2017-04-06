@@ -47,6 +47,9 @@ class BaseServerSideTable(ClientT)
         final switch(cst.strategy) with(Strategy) {
             case easilySyncAll:
                 cst.ops ~= new ClientImportValues!ClientT();
+                break;
+            case easilySyncNone:
+                break;
         }
         // new client, new client side table
         assert( (clientid in clientSideTables) is null, format("cliendid:%s, clientSideTables:%s", clientid, clientSideTables.keys() ) );
@@ -464,14 +467,14 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 struct ClientSideTable(ClientT)
 {
     private {
-        Strategy strategy = Strategy.easilySyncAll;
+        Strategy strategy = Strategy.easilySyncNone;
         public SynOp!ClientT[] ops;
     }
 }
 
 private
 {
-    enum Strategy { easilySyncAll }
+    enum Strategy { easilySyncAll, easilySyncNone }
 
     class SynOp(MarsClientT) {
         abstract void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst);
