@@ -156,6 +156,8 @@ struct DiscardAuthenticationReply {
 struct SubscribeReq 
 {
     static immutable type = MsgType.subscribeReq;
+    string select;
+    string parameters;
 }
 
 struct SubscribeRep 

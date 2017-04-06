@@ -3,6 +3,15 @@ module mars.protosub;
 import mars.client;
 import mars.msg;
 
+
+/+
+class DDD : BaseServerSideTable!int {
+    this(immutable(Table) definition){
+            super(definition);
+        }
+}
++/
+ 
 void protoSubscribe(S)(MarsClient* client, S socket) {
     auto state = RequestState.executed;
 
@@ -12,7 +21,8 @@ void protoSubscribe(S)(MarsClient* client, S socket) {
     //}
 
     if( state == state.init ){
-        //client.vueUpdateRecord(req.tableIndex, req.keys, req.record, state);
+        auto json = client.vueSubscribe(req.select, null, state);
+        import std.stdio; writeln(json.toPrettyString());
     }
 
     final switch(state) with(RequestState){

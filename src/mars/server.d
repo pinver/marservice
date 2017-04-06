@@ -92,7 +92,7 @@ class MarsServer
     void createClientSideTablesFor(MarsClient* client){
         // ... the tables that are exposed in the schema ...
         foreach(ref table; tables){
-            /*client.tables[table.definition.name] =*/ table.createClientSideTable(client.id);
+            table.createClientSideTable(client.id);
         }
         //logInfo("mars - created %d client side tables", client.tables.length);
         // XXX questo è da ripensare con un meccanismo generico

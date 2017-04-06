@@ -149,7 +149,6 @@ class Database
         auto recordSet = db.executeQueryUnsafe("select * from planets where name = $name", ["name": Variant("Tatooine")]);
         scope(exit) recordSet.close();
         assert(recordSet.front[1].get!long == 120_000);
-
     }}
 
     auto executeQueryUnsafe(Row)(string sql){

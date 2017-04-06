@@ -68,7 +68,7 @@ class BaseServerSideTable(ClientT)
     }
 
     /// execute a sql select statement, and returns a vibe json array with the records as json
-    private auto selectAsJson(Database db, string sqlSelect, Variant[string] parameters)
+    auto selectAsJson(Database db, string sqlSelect, Variant[string] parameters)
     {
         import vibe.data.json;
 

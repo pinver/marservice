@@ -3,6 +3,7 @@ module mars.client;
 
 import std.datetime,
        std.format,
+       std.variant,
        std.experimental.logger;
 
 import vibe.core.log;
@@ -142,6 +143,16 @@ struct MarsClient
 
     void vueUpdateRecord(ulong tableIndex, immutable(ubyte)[] keys, immutable(ubyte)[] record, ref RequestState state){
         marsServer.tables[tableIndex].updateRecord(db, keys, record, state);
+    }
+
+    auto vueSubscribe(string select, Variant[string] parameters, ref RequestState state){
+        import std.typecons : WhiteHole;
+        import mars.defs : Table;
+        AuthoriseError err; auto db = DatabaseService("127.0.0.1", 5432, "starwars").connect("jedi", "force", err);
+        //auto table = new DDD(Table());
+        auto table = new WhiteHole!(BaseServerSideTable!MarsClient)(Table());
+        auto json = table.selectAsJson(db, select, parameters);
+        return json;
     }
 
     private {
