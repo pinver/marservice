@@ -6,6 +6,8 @@ import std.conv;
 import std.format;
 import std.string;
 import std.range;
+import std.typecons;
+import std.variant;
 
 import mars.defs;
 import mars.msg : AuthoriseError, InsertError, DeleteError, RequestState;
@@ -122,7 +124,34 @@ class Database
     auto executeQueryUnsafe(string sql){
         return conn.executeQuery(sql);
     }
-    
+
+    // usato da sync per la sottoscrizione di query complesse, con parametri
+    auto executeQueryUnsafe(string sql, Variant[string] parameters){
+        // ... sort param names, transform names into a sequence of $1, $2
+        auto pgargs = xxx(sql, parameters);
+        // ... prepare the statement
+        auto cmd = new PGCommand(conn, pgargs[0]);
+        foreach(param; pgargs[1]){
+            // ... try to guess the PGType from the Variant typeinfo ...
+            auto pgType = toPGType(param.type);
+            switch(pgType) with (PGType){
+                case TEXT:
+                    cmd.parameters.add(1, pgType).value = param.get!string;
+                    break;
+                default:
+                    assert(false, pgType.to!string);
+            }
+        }
+        return cmd.executeQuery();
+    }
+    version(unittest_starwars){ unittest {
+        auto db = new Database("127.0.0.1", "starwars", "jedi", "force");
+        auto recordSet = db.executeQueryUnsafe("select * from planets where name = $name", ["name": Variant("Tatooine")]);
+        scope(exit) recordSet.close();
+        assert(recordSet.front[1].get!long == 120_000);
+
+    }}
+
     auto executeQueryUnsafe(Row)(string sql){
         return conn.executeQuery!Row(sql);
     }
@@ -205,6 +234,16 @@ private {
     import mars.lexer;
     import mars.sqldb;
 
+    PGType toPGType(TypeInfo t){
+        if(t == typeid(bool)) return PGType.BOOLEAN;
+        if(t == typeid(int)) return PGType.INT4;
+        if(t == typeid(short)) return PGType.INT2;
+        if(t == typeid(string)) return PGType.TEXT;
+        if(t == typeid(float)) return PGType.FLOAT4;
+        if(t == typeid(double)) return PGType.FLOAT8;
+        if(t == typeid(ubyte[])) return PGType.BYTEA;
+        assert(false, t.to!string);
+    }
 
     PGType toPGType(Type t){
         final switch(t) with(Type) {
@@ -271,6 +310,20 @@ private {
         version(unittest){
             pragma(msg, "compile with version 'unittest_starwars' to activate postgresql starwars tests.");
         }
+    }
+
+    auto xxx(string sql, Variant[string] parameters){
+        auto names = sort(parameters.keys);
+        Variant[] pgparam;
+        foreach(name; names){
+            pgparam ~= parameters[name];
+            sql = sql.replace("$"~name, "$"~(pgparam.length).to!string); // they are starting from $1, and not from $0
+        }
+        return tuple(sql, pgparam);
+    }
+    unittest {
+        auto r = xxx("select * from planets where name=$name", ["name": Variant("Tatooine")]);
+        import std.stdio; writeln(r);
     }
 }
 

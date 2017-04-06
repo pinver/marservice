@@ -14,12 +14,14 @@ BaseServerSideTable
 `;
 
 import std.algorithm;
+import std.conv;
 import std.datetime;
+import std.format;
 import std.meta;
 import std.typecons;
+import std.variant;
+
 import std.experimental.logger;
-import std.format;
-import std.conv;
 
 import msgpack;
 
@@ -65,11 +67,11 @@ class BaseServerSideTable(ClientT)
     }
 
     /// execute a sql select statement, and returns a vibe json array with the records as json
-    private auto selectAsJson(Database db, string sqlSelect)
+    private auto selectAsJson(Database db, string sqlSelect, Variant[string] parameters)
     {
         import vibe.data.json;
 
-        auto resultSet = db.executeQueryUnsafe(sqlSelect);
+        auto resultSet = db.executeQueryUnsafe(sqlSelect, parameters);
         scope(exit) resultSet.close();
 
         Json jsonRecords = Json.emptyArray;
@@ -98,7 +100,7 @@ class BaseServerSideTable(ClientT)
         unittest {
             AuthoriseError err; auto db = DatabaseService("127.0.0.1", 5432, "starwars").connect("jedi", "force", err);
             auto table = new WhiteHole!BaseServerSideTable(Table());
-            auto json = table.selectAsJson(db, "select * from people");
+            auto json = table.selectAsJson(db, "select * from people", null);
             //import std.stdio; writeln(json.toPrettyString());
             assert(json[0][0] == "Luke");
         }
