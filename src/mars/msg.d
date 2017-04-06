@@ -18,20 +18,7 @@ enum MsgTypeStoC {
     insertRecordsReq = 68, insertRecordsRep,
 }
 
-// request an update of a record to the server, that the client has optimistically updated
-struct OptUpdateReq 
-{
-    static immutable type = MsgType.optUpdateReq;
-    ulong tableIndex;           /// the index identifier of the updated table.
-    immutable(ubyte)[] keys;    /// the primary keys of the record to update
-    immutable(ubyte)[] record;  /// the new values for that record
-}
 
-struct OptUpdateRep 
-{
-    static immutable type = MsgType.optUpdateRep;
-    RequestState state;
-}
 
 struct AutologinReq
 {
@@ -105,6 +92,8 @@ enum MsgType {
     deleteRecordRequest  = 28, deleteRecordReply,
 
     optUpdateReq = 50, optUpdateRep = 51, // request the server to perform an update and confirm an optimistic one
+    subscribeReq = 52, subscribeRep = 52, // request to subscribe to a query
+
 
 
     welcomeBroadcast = 100, goodbyBroadcast,
@@ -163,6 +152,18 @@ struct DiscardAuthenticationReply {
     static immutable type = MsgType.discardAuthenticationReply;
 }
 
+// 
+struct SubscribeReq 
+{
+    static immutable type = MsgType.subscribeReq;
+}
+
+struct SubscribeRep 
+{
+    static immutable type = MsgType.subscribeRep;
+    RequestState state;
+}
+
 struct ImportValuesRequest {
     static immutable type = MsgType.importValuesRequest;
     int statementIndex;
@@ -211,13 +212,29 @@ enum DeleteError {
     deleted,
     unknownError,
 }
-// flowing from server to client
+
+// the reply is flowing from server to client
 struct DeleteRecordReply {
     static immutable type =  MsgType.deleteRecordReply;
     int deleteStatus;
     immutable(ubyte)[] serverRecord = []; // if we can't delete the record, we must re-insert it into the client
     int tableIndex;
     int statementIndex;
+}
+
+// request an update of a record to the server, that the client has optimistically updated
+struct OptUpdateReq 
+{
+    static immutable type = MsgType.optUpdateReq;
+    ulong tableIndex;           /// the index identifier of the updated table.
+    immutable(ubyte)[] keys;    /// the primary keys of the record to update
+    immutable(ubyte)[] record;  /// the new values for that record
+}
+
+struct OptUpdateRep 
+{
+    static immutable type = MsgType.optUpdateRep;
+    RequestState state;
 }
 
 struct UpdateValuesRequest {

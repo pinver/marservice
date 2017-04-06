@@ -14,6 +14,7 @@ import mars.protocallmethod;
 import mars.protoinsertvaluerequest;
 import mars.protodeleterecordrequest;
 import mars.protoupd;
+import mars.protosub;
 
 void protoMars(S)(MarsClient* client, S socket_)
 {
@@ -83,6 +84,11 @@ void protoMars(S)(MarsClient* client, S socket_)
             case optUpdateReq:
                 logInfo("mars - S<--%s - received an update originating from an optimistic client update", client.id);
                 protoOptUpdate(client, socket);
+                break;
+
+            case subscribeReq:
+                logInfo("mars - S<--%s - received a request for subscription", client.id);
+                protoSubscribe(client, socket);
                 break;
 
             default:
