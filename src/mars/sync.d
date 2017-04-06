@@ -27,6 +27,7 @@ import mars.defs;
 import mars.pgsql;
 import mars.msg;
 import mars.server;
+version(unittest) import mars.starwars;
 
 /**
 A server side table is instantiated only once per marsServer, and they are stored into the 'tables'
@@ -61,6 +62,46 @@ class BaseServerSideTable(ClientT)
     auto wipeClientSideTable(string clientid){
         assert( (clientid in clientSideTables) !is null, clientid );
         clientSideTables.remove(clientid);
+    }
+
+    /// execute a sql select statement, and returns a vibe json array with the records as json
+    private auto selectAsJson(Database db, string sqlSelect)
+    {
+        import vibe.data.json;
+
+        auto resultSet = db.executeQueryUnsafe(sqlSelect);
+        scope(exit) resultSet.close();
+
+        Json jsonRecords = Json.emptyArray;
+        foreach(variantRow; resultSet){
+            Json jsonRow = Json.emptyArray;
+            foreach(i, variantField; variantRow){
+                if(variantField.type == typeid(int)){ jsonRow ~= variantField.get!int; }
+                else if(variantField.type == typeid(float)){ jsonRow ~= variantField.get!float; }
+                else if(variantField.type == typeid(long)){ jsonRow ~= variantField.get!long; }
+                else if(variantField.type == typeid(string)){ jsonRow ~= variantField.get!string; }
+                else if(variantField.type == typeid(ubyte[])){
+                    // ... if I apply directly the '=~', the arrays are flattened!
+                    jsonRow ~= 0;
+                    jsonRow[jsonRow.length-1] = variantField.get!(ubyte[]).serializeToJson;
+                }
+                else {
+                    import std.stdio; writeln(variantField.type);
+                    assert(false);
+                }
+            }
+            jsonRecords ~= 0; jsonRecords[jsonRecords.length-1] = jsonRow;
+        }
+        return jsonRecords;
+    }
+    version(unittest_starwars){
+        unittest {
+            AuthoriseError err; auto db = DatabaseService("127.0.0.1", 5432, "starwars").connect("jedi", "force", err);
+            auto table = new WhiteHole!BaseServerSideTable(Table());
+            auto json = table.selectAsJson(db, "select * from people");
+            //import std.stdio; writeln(json.toPrettyString());
+            assert(json[0][0] == "Luke");
+        }
     }
 
     abstract immutable(ubyte)[] packRows(size_t offset = 0, size_t limit = long.max);

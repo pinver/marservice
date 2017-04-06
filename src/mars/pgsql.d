@@ -117,9 +117,12 @@ class Database
     T executeScalarUnsafe(T)(string sql){
         return conn.executeScalar!T(sql);
     }
+
+    // usato da sync per la sottoscrizione di query complesse
     auto executeQueryUnsafe(string sql){
         return conn.executeQuery(sql);
     }
+    
     auto executeQueryUnsafe(Row)(string sql){
         return conn.executeQuery!Row(sql);
     }
