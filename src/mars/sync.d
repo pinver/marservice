@@ -47,6 +47,7 @@ class BaseServerSideTable(ClientT)
 
     auto createClientSideTable(string clientid){
         auto cst = new ClientSideTable!ClientT();
+        cst.strategy = definition.cacheRows? Strategy.easilySyncAll : Strategy.easilySyncNone;
         final switch(cst.strategy) with(Strategy) {
             case easilySyncAll:
                 cst.ops ~= new ClientImportValues!ClientT();
