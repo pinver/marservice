@@ -245,8 +245,11 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
                 auto rec = record;
             }
             toInsert[keys] = rec;
-            foreach(ref cst; clientSideTables.values){
-                cst.ops ~= new ClientInsertValues!ClientT();
+            // ... don't propagate if not cached, or we are triggering a loot of refresh: stick with manual refresh done on client.
+            if(table.cacheRows){
+                foreach(ref cst; clientSideTables.values){
+                    cst.ops ~= new ClientInsertValues!ClientT();
+                }
             }
         }
         return inserted;
