@@ -148,8 +148,7 @@ struct MarsClient
     auto vueSubscribe(string select, Variant[string] parameters, ref RequestState state){
         import std.typecons : WhiteHole;
         import mars.defs : Table;
-        AuthoriseError err; auto db = DatabaseService("127.0.0.1", 5432, "starwars").connect("jedi", "force", err);
-        //auto table = new DDD(Table());
+
         auto table = new WhiteHole!(BaseServerSideTable!MarsClient)(Table());
         auto json = table.selectAsJson(db, select, parameters);
         return json;
