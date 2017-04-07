@@ -131,12 +131,12 @@ class Database
         auto pgargs = xxx(sql, parameters);
         // ... prepare the statement
         auto cmd = new PGCommand(conn, pgargs[0]);
-        foreach(param; pgargs[1]){
+        foreach(j, param; pgargs[1]){
             // ... try to guess the PGType from the Variant typeinfo ...
             auto pgType = toPGType(param.type);
             switch(pgType) with (PGType){
                 case TEXT:
-                    cmd.parameters.add(1, pgType).value = param.get!string;
+                    cmd.parameters.add((j+1).to!short, pgType).value = param.get!string;
                     break;
                 default:
                     assert(false, pgType.to!string);
