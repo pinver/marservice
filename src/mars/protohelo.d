@@ -18,6 +18,8 @@ import mars.protomars;
  */
 void protoHelo(T)(T socket)
 {
+    assert(marsServer !is null);
+
     // ... verify that it's a mars client ...
     if(auto helo = socket.receiveText() != "mars" )
     {
@@ -29,15 +31,18 @@ void protoHelo(T)(T socket)
     // ... based on the client id, the server will instantiate or retrieve a client-side structure
     auto clientId = socket.receiveText();
     logInfo("mars - S<--%s - client claims to be %s, engaging it", clientId, clientId);
-    assert(marsServer !is null);
+    
     auto marsClient = marsServer.engageClient(clientId);
+    scope(exit){
+        // ... we have done, also on unwind, inform the server that this client socket is no more active.
+        marsServer.disposeClient(marsClient);
+    }
+
     auto reply = marsClient.reconnections.length > 1? "marsreconnected" : "marswelcome";
     socket.send(reply);
 
     // ... we are supporting only one version of the protocol right now, let's use it ...
     protoMars!T(marsClient, socket);
 
-    // ... we have done, inform the server that this client socket is no more active.
-    marsServer.disposeClient(marsClient);
 } 
 

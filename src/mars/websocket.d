@@ -24,11 +24,15 @@ struct HandlerData { string data; }
 struct HandlerBinaryData { immutable(ubyte)[] data; }
 
 enum ReceiveMode { text, binary }
+
 /**
  * Entry point of the task that is handling the websocket connection with the client that has just joined us. */
 void handleWebSocketConnectionClientToService(scope WebSocket socket)
 {
-    logInfo("mars - S - C - the webclient connected the Client to Service channel");
+                    logInfo("mars - C ... S - a webclient has opened the 'Client to Service' channel");
+    scope(success)  logInfo("mars - C ... S - exiting the websocket handler task with success, the socket will be disposed");
+    scope(failure) logError("mars - C ... S - exiting the websocket handler task for a failure! the socket will be disposed");
+
     vibe.core.core.yield();
 
     // ... the HTTP request that established the web socket connection, let's extract the client address & session...
@@ -36,110 +40,7 @@ void handleWebSocketConnectionClientToService(scope WebSocket socket)
     string sessionId = socket.request.session.id;
 
     // ... we can receive text and binary data, and we start with text ...
-    ReceiveMode receiveMode = ReceiveMode.text;
-
-    /+
-    // Task that receives and dispatch data to/for the socket
-    void dataDispatcher(Task receiver)
-    {
-        //logInfo("task dataDispatcher starting for sessionid %s", sessionId);
-        scope(exit) logInfo("task dataDispatcher terminating for sessionid %s", sessionId);
-        try {
-            while(true)
-            {
-                if( receiveMode == ReceiveMode.text ){
-                    auto socketData = receiveOnly!SocketData();
-                    final switch(socketData.flow) with(Flow) {
-                        case connectionLost:
-                            logInfo("mars - connection lost received by data dispatcher, so terminating");
-                            return;
-                        case received:
-                            receiver.send(HandlerData(socketData.data));
-                            break;
-                        case toSend:
-                            //logInfo("mars - dispatcher sending data via websocket: %s", socketData.data);
-                            socket.send(socketData.data);
-                            break;
-                    }
-                }
-                else {
-                    auto socketData = receiveOnly!SocketBinaryData();
-                    final switch(socketData.flow) with(Flow) {
-                        case connectionLost:
-                            //logInfo("mars - connection lost received by web socket receiver, so terminating");
-                            import mars.msg : MarsMsgType = MsgType;
-                            int messageId = 0; auto msgType = MarsMsgType.aborting;
-                            immutable(ubyte)[8] prefix = (cast(immutable(ubyte)*)(&(messageId)))[0 .. 4] 
-                                                           ~ (cast(immutable(ubyte)*)(&(msgType)))[0 .. 4];
-                            //trace("sending forged abort to the protocol", prefix);
-                            // XXX non ho capito perchè, ma con solo il prefix, viene ricevuto sminchio ...
-                            receiver.send(HandlerBinaryData( (prefix ~ prefix).idup ));
-                            //trace("sending forged abort done, returning and exiting the task");
-                            
-                            return;
-                        case received:
-                            receiver.send(HandlerBinaryData(socketData.data));
-                            break;
-                        case toSend:
-                            //logInfo("mars - dispatcher sending binary data via websocket: length %d", socketData.data.length);
-                            socket.send(socketData.data.dup);
-                            break;
-                    }
-                }
-            }
-        }
-        catch(Exception e){
-            logError("mars - task dataDispatcher exception!");
-            logError(e.toString());
-        }
-    }
-    +/
-
-    /+
-    // Task that receives from the websocket and dispatch to the above task
-    void wsReceiver(Task receiver)
-    {
-        //logInfo("task wsReceiver starting");
-        //scope(exit) logInfo("task wsReceiver terminating");
-        try {
-            while( socket.waitForData() )
-            {
-                if( receiveMode == ReceiveMode.text ) {
-                    string data = socket.receiveText(true);
-                    //logInfo("mars - received data from websocket:%s", data);
-                    receiver.send(SocketData(Flow.received, data));
-                }
-                else {
-                    immutable(ubyte)[] data = socket.receiveBinary().idup;
-                    //logInfo("mars - received binary data from websocket with length %d", data.length);
-                    receiver.send(SocketBinaryData(Flow.received, data));
-                }
-            }
-            logInfo("mars - task websocket receiver connection lost!");
-            // inform the other task that the connection is lost
-            if( receiveMode == ReceiveMode.binary ){
-                receiver.send(SocketBinaryData(Flow.connectionLost));
-            } else {
-                receiver.send(SocketData(Flow.connectionLost));
-            }
-            //logInfo("mars - task websocket receiver exiting");
-        }
-        catch(Exception e){
-            logError("mars - task wsReceiver exception!");
-            logError(e.toString());
-        }
-    }
-    +/
-
-    /+
-    // Activate the tasks for this client ....
-
-    // As we are passing getThis as parameter, THIS task will be notified about data received by the websocket, so the 
-    // Proxy shoud be used by this task ...
-    auto dataDispatcherTask = runTask( &dataDispatcher, Task.getThis );
-    // Start the task that will send the websocket data to the dispatcher task ... 
-    auto wsReceiverTask = runTask( &wsReceiver, dataDispatcherTask );
-    +/  
+    ReceiveMode receiveMode = ReceiveMode.text; 
 
     // Identify the client type and start processing it ...
     import mars.protohelo : protoHelo;
@@ -147,7 +48,7 @@ void handleWebSocketConnectionClientToService(scope WebSocket socket)
     protoHelo(socket);
 
     // ... we have terminated the client process, 
-    logInfo("mars - exiting the task that handled the websocker:%d tasks are running"/+, dataDispatcherTask.taskCounter()+/);
+    
 }
 
 /**
@@ -159,23 +60,27 @@ void handleWebSocketConnectionServiceToClient(scope WebSocket socket)
 {
     import mars.server : marsServer;
 
-    logInfo("the webclient connected the Service to Client channel");
+                    logInfo("mars - S ... C - a webclient has opened the 'Service to Client' channel");
+    scope(success)  logInfo("mars - S ... C - exiting the websocket handler task with success, the socket will be disposed");
+    scope(failure) logError("mars - S ... C - exiting the websocket handler task for a failure! the socket will be disposed");
+
+    import mars.server : marsServer;
+
     string clientId = socket.receiveText();
-    logInfo("mars - S - C - Service To Client received the client identifier:%s", clientId);
+    logInfo("mars - S ... C - received the client identifier:%s", clientId);
 
     // expose this task to the marsClient, so that it can push request to the web client
     assert(marsServer !is null);
     auto client = marsServer.getClient(clientId);
     if( client is null ){
-        logError("mars - can't find the mars client with id %s in the server registered clients", clientId);
+        logError("mars - S ... C - can't find the mars client with id %s in the server registered clients", clientId);
         return;
     }
     import mars.protomars : MarsProxyStoC;
     client.wireSocket(MarsProxyStoC!WebSocket(socket, clientId));
 
-    logInfo("push channel waiting for termination");
+    logInfo("mars - S ... C - waiting for termination");
     string terminate = receiveOnly!string();
-    logInfo("push channel terminating");
 }
 
 struct Proxy {
