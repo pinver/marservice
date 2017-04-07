@@ -164,6 +164,7 @@ struct SubscribeRep
 {
     static immutable type = MsgType.subscribeRep;
     RequestState state;
+    string json;
 }
 
 struct ImportValuesRequest {
