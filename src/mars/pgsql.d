@@ -207,9 +207,8 @@ class Database
         short i = record.tupleof.length +1;
         addParameters!table(cmd, pk, i);
         try {
-            logWarn("OKKKKKKK? %s", sql);
-            logWarn("OKKKKKKK? %s %s", pk, record);
-
+            //logWarn("OKKKKKKK? %s", sql);
+            //logWarn("OKKKKKKK? %s %s", pk, record);
             cmd.executeNonQuery();
         }
         catch(ServerErrorException e){
