@@ -87,7 +87,7 @@ void protoMars(S)(MarsClient* client, S socket_)
                 break;
 
             case subscribeReq:
-                logInfo("mars - S<--%s - received a request for subscription", client.id);
+                logInfo("mars - S<--%s - id:%s - received a request for subscription", client.id, socket.messageId, client.id);
                 protoSubscribe(client, socket);
                 break;
 
@@ -119,7 +119,7 @@ struct MarsProxy(S)
         ubyte[8] prefix = (cast(ubyte*)(&(req.messageId)))[0 .. 4] 
                                    ~ (cast(ubyte*)(&(rep.type)))[0 .. 4];
         ubyte[] packed = rep.pack!true();
-        logInfo("mars - S-->%s - sending message %d of type %s with a payload of %d bytes", clientId, req.messageId, rep.type, packed.length);
+        logInfo("mars - %s<--S - sending reply %s of type %s with a payload of %s bytes", clientId, req.messageId, rep.type, packed.length);
         socket.send(prefix ~ packed);
     }
 
@@ -127,7 +127,7 @@ struct MarsProxy(S)
         immutable(ubyte)[8] prefix = (cast(immutable(ubyte)*)(&messageId))[0 .. 4] 
                                    ~ (cast(immutable(ubyte)*)(&(req.type)))[0 .. 4];
         immutable(ubyte)[] packed = req.pack!true().idup;
-        logInfo("mars - S-->%s - sending message request %d of type %s with a payload of %d bytes", clientId, messageId, req.type, packed.length);
+        logInfo("mars - S-->%s - sending request %s of type %s with a payload of %s bytes", clientId, messageId, req.type, packed.length);
         socket.send(prefix ~ packed);
     }
 
