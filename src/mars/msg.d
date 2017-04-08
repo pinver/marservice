@@ -7,6 +7,7 @@ enum RequestState
     // ... client side bugs or tampering of the request
     rejectedAsDecodingFailed, /// the deconding of the data is failed
     rejectedAsWrongParameter, /// the value of one of the request parameters is wrong.
+    rejectedAsNotAuthorised,  /// the client is not authorised for the request (ex, subscription before of authentication)
     rejectedAsPGSqlError,     /// PostgreSQL unhandled error
     internalServerError,
 }

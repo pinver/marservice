@@ -30,6 +30,7 @@ void protoOptUpdate(S)(MarsClient* client, S socket)
         case rejectedAsWrongParameter: assert(false);
         case internalServerError:
         case rejectedAsDecodingFailed:
+        case rejectedAsNotAuthorised:
         case rejectedAsPGSqlError:
             socket.sendReply(req, OptUpdateRep(state));
             break;

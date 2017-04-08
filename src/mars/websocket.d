@@ -29,9 +29,9 @@ enum ReceiveMode { text, binary }
  * Entry point of the task that is handling the websocket connection with the client that has just joined us. */
 void handleWebSocketConnectionClientToService(scope WebSocket socket)
 {
-                    logInfo("mars - C ... S - a webclient has opened the 'Client to Service' channel");
-    scope(success)  logInfo("mars - C ... S - exiting the websocket handler task with success, the socket will be disposed");
-    scope(failure) logError("mars - C ... S - exiting the websocket handler task for a failure! the socket will be disposed");
+    logInfo("mars - C ... S - a webclient has opened the 'Client to Service' channel - socket:%s", &socket);
+    scope(success) logInfo("mars - C ... S - exiting the websocket handler task with success, the socket will be disposed - socket:%s", &socket);
+    scope(failure) logError("mars - C ... S - exiting the websocket handler task for a failure! the socket will be disposed socket:%s", &socket);
 
     vibe.core.core.yield();
 
@@ -60,9 +60,9 @@ void handleWebSocketConnectionServiceToClient(scope WebSocket socket)
 {
     import mars.server : marsServer;
 
-                    logInfo("mars - S ... C - a webclient has opened the 'Service to Client' channel");
-    scope(success)  logInfo("mars - S ... C - exiting the websocket handler task with success, the socket will be disposed");
-    scope(failure) logError("mars - S ... C - exiting the websocket handler task for a failure! the socket will be disposed");
+    logInfo("mars - S ... C - a webclient has opened the 'Service to Client' channel - socket:%s", &socket);
+    scope(success) logInfo("mars - S ... C - exiting the websocket handler task with success, the socket will be disposed - socket:%s", &socket);
+    scope(failure) logError("mars - S ... C - exiting the websocket handler task for a failure! the socket will be disposed - socket:%s", &socket);
 
     import mars.server : marsServer;
 

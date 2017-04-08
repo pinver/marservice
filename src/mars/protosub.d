@@ -13,6 +13,7 @@ import mars.msg;
 void protoSubscribe(S)(MarsClient* client, S socket) {
     auto state = RequestState.executed;
 
+
     auto req = socket.binaryAs!SubscribeReq;
     // XXX handle wrong parameters
     //if( req.tableIndex < 0 || req.tableIndex > marsServer.tables.length ){
@@ -50,6 +51,7 @@ void protoSubscribe(S)(MarsClient* client, S socket) {
         case rejectedAsWrongParameter:
         case internalServerError:
         case rejectedAsDecodingFailed:
+        case rejectedAsNotAuthorised:
         case rejectedAsPGSqlError:
             socket.sendReply(req, SubscribeRep(state, stringified));
             break;

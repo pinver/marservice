@@ -68,8 +68,9 @@ class BaseServerSideTable(ClientT)
     }
 
     /// execute a sql select statement, and returns a vibe json array with the records as json
-    auto selectAsJson(Database db, string sqlSelect, Variant[string] parameters)
-    {
+    auto selectAsJson(Database db, string sqlSelect, Variant[string] parameters) in {
+        assert(db !is null);
+    } body {
         import vibe.data.json;
 
         auto resultSet = db.executeQueryUnsafe(sqlSelect, parameters);

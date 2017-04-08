@@ -148,7 +148,12 @@ struct MarsClient
     auto vueSubscribe(string select, Variant[string] parameters, ref RequestState state){
         import std.typecons : WhiteHole;
         import mars.defs : Table;
-
+        // ... sanity check: the client has requested a subscription, but has not completed the login.. (for bugs, for example)
+        if( ! authorised ){
+            logWarn("mars - rejecting a non authorised subscribe from client %s, client bug?",id);
+            state = RequestState.rejectedAsNotAuthorised;
+            return Json.emptyObject;
+        }
         auto table = new WhiteHole!(BaseServerSideTable!MarsClient)(Table());
         auto json = table.selectAsJson(db, select, parameters);
         return json;
