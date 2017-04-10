@@ -20,7 +20,7 @@ void protoSubscribe(S)(MarsClient* client, S socket) {
     //    state = RequestState.rejectedAsWrongParameter;
     //}
 
-    infof("===> %s ", req.parameters);
+    infof("===> %s ", req.select, req.parameters);
 
     // ... let's put the parameters that are inside the json in a variant AA
     //     in that way we are isolating the encoding, vibe json, from the rest ...
@@ -30,7 +30,7 @@ void protoSubscribe(S)(MarsClient* client, S socket) {
         foreach (string name, value; json){
             if( value.type == Json.Type.string ){ parameters[name] = value.get!string; }
             // ... vibe doc says Json int is a '64bit integer value'
-            else if(value.type == Json.Type.int_){ parameters[name] = value.get!long; } 
+            else if(value.type == Json.Type.int_){ parameters[name] = value.get!long.to!int; } 
             else if(value.type == Json.Type.bool_){ parameters[name] = value.get!bool; }
 
             else if(value.type == Json.Type.null_){
