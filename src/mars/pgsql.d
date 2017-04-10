@@ -138,6 +138,9 @@ class Database
                 case TEXT:
                     cmd.parameters.add((j+1).to!short, pgType).value = param.get!string;
                     break;
+                case INT4:
+                    cmd.parameters.add((j+1).to!short, pgType).value = param.get!int;
+                    break;
                 default:
                     assert(false, pgType.to!string);
             }
