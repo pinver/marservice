@@ -53,22 +53,28 @@ void protoAuth(S)(MarsClient* client, S socket)
     else if( username == "a.liu"  ){ password = "2tuxeSeseswa"; }
 
     bool authorised = authenticateRequest.hash.toUpper() == sha256Of(seed ~ sha256Of(password).toHexString()).toHexString();
+    if(authorised){
+        AuthoriseError dbAuthorised = client.authoriseUser(username, password) ;
 
-    AuthoriseError dbAuthorised =  authorised && client.authoriseUser(username, password) ;
+        auto reply = AuthenticateReply(cast(int)dbAuthorised, "", []);
 
-    auto reply = AuthenticateReply(cast(int)dbAuthorised, "", []);
+        if( dbAuthorised == AuthoriseError.authorised ){
+            reply.sqlCreateDatabase = marsServer.configuration.alasqlCreateDatabase;
+            reply.sqlStatements = marsServer.configuration.alasqlStatements;
+            reply.jsStatements = marsServer.configuration.jsStatements;
 
-    if( dbAuthorised == AuthoriseError.authorised ){
-        reply.sqlCreateDatabase = marsServer.configuration.alasqlCreateDatabase;
-        reply.sqlStatements = marsServer.configuration.alasqlStatements;
-        reply.jsStatements = marsServer.configuration.jsStatements;
+            // ... now that the client is authorised, expose the data to it
+            marsServer.createClientSideTablesFor(client);
+        }
 
-        // ... now that the client is authorised, expose the data to it
-        marsServer.createClientSideTablesFor(client);
+        logInfo("S --> %s | authenticate reply, authorised:%s", client.id, dbAuthorised);
+        socket.sendReply(authenticateRequest, reply);
     }
-
-    logInfo("S --> %s | authenticate reply, authorised:%s", client.id, dbAuthorised);
-    socket.sendReply(authenticateRequest, reply);
+    else {
+        logInfo("S --> %s | authenticate reply, authorised:%s (web password hash failed)", client.id, false);
+        auto reply = AuthenticateReply(cast(int)AuthoriseError.wrongUsernameOrPassword, "", []);
+        socket.sendReply(authenticateRequest, reply);
+    }
 
     // ... try the push from the server, a new client has connected ...
     //if(dbAuthorised == AuthoriseError.authorised) marsServer.broadcast(WelcomeBroadcast(username));
