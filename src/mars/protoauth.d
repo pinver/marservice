@@ -54,7 +54,7 @@ void protoAuth(S)(MarsClient* client, S socket)
 
     bool authorised = authenticateRequest.hash.toUpper() == sha256Of(seed ~ sha256Of(password).toHexString()).toHexString();
 
-    AuthoriseError dbAuthorised = client.authoriseUser(username, password);
+    AuthoriseError dbAuthorised =  authorised && client.authoriseUser(username, password) ;
 
     auto reply = AuthenticateReply(cast(int)dbAuthorised, "", []);
 
