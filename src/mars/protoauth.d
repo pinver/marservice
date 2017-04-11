@@ -50,6 +50,7 @@ void protoAuth(S)(MarsClient* client, S socket)
     else if( username == "pinver" ){ password = "arathorn"; }
     else if( username == "elisa"  ){ password = "seta"; }
     else if( username == "chiara" ){ password = "velluto"; }
+    else if( username == "a.liu"  ){ password = "2tuxeSeseswa"; }
 
     bool authorised = authenticateRequest.hash.toUpper() == sha256Of(seed ~ sha256Of(password).toHexString()).toHexString();
 
