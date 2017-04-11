@@ -28,7 +28,7 @@ int main()
     marsServer = new MarsServer(marsConf);
     marsServer.serverSideMethods = &exposedMethods;
     enum ctTables = marsConf.schemaExposed.tables;
-    InstantiateTables!(ctTables)(marsServer, [], [], [], []);
+    InstantiateTables!(ctTables)(marsServer, [], [], [], [], []);
     setupWebSocketServer();
 
     return runApplication();
