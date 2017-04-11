@@ -55,8 +55,8 @@ string updateDecorationsParameter(const(Table) table)
     );
 }
 unittest {
-    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).updateDecorationsParameter;
-    assert( sql == "update bar set mars_who = $mars_who, mars_what = $mars_what, mars_when = $mars_when where foo = $keyfoo", sql );
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false), Col("bak", Type.text)],[0, 1],[]).updateDecorationsParameter;
+    assert( sql == "update bar set mars_who = $mars_who, mars_what = $mars_what, mars_when = $mars_when where foo = $keyfoo AND baz = $keybaz", sql );
 }
 
 string deleteFromParameter(const(Table) table)
