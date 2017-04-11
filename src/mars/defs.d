@@ -6,6 +6,7 @@ import std.meta;
 import std.traits;
 import std.algorithm;
 import std.array;
+import std.meta;
 import std.typecons;
 
 import mars.starwars;
@@ -111,6 +112,9 @@ struct Table {
 
         return columns.indexed(primaryKey).array;
     }
+    unittest {
+        static assert(Landings.pkCols.length == Landings.primaryKey.length);
+    }
 
 }
 unittest
@@ -196,17 +200,18 @@ static assert( is(asD!( [Col("c", Type.integer), Col("d", Type.text)] ) == Alias
 
 /** 
  * returns the D type and the name of the column. */
-private template asStruct_(alias c, string prefix ="") if( is(Unqual!(typeof(c)) : immutable(Col)[]) || is(Unqual!(typeof(c)) : Col[]) )
+private template asStruct_(alias c, string p ="") if( is(Unqual!(typeof(c)) : immutable(Col)[]) || is(Unqual!(typeof(c)) : Col[]) )
 {
 
     enum cols = c;
+    enum prefix = p;
     static if(cols.length == 1){
         alias t = asD!(cols[0]);
         enum string n = cols[0].name;
         enum string asStruct_ = t.stringof ~ " " ~ prefix ~ n ~ ";"; //AliasSeq!(asD!(cols[0])););
     }
     else static if(cols.length >1){
-        enum string asStruct_ = (asD!(cols[0])).stringof ~ " " ~ prefix ~ cols[0].name ~ "; " ~ asStruct_!(cols[1 .. $]);
+        enum string asStruct_ = (asD!(cols[0])).stringof ~ " " ~ prefix ~ cols[0].name ~ "; " ~ asStruct_!(cols[1 .. $], prefix);
     }
     else static assert(false, cols.length);
 }
@@ -243,7 +248,10 @@ template asPkStruct(alias t)
     enum string def = "struct " ~ structName ~ " {" ~ asStruct_!(cols) ~ "}";
     mixin(def ~"; alias asPkStruct = " ~ structName ~ ";");
 }
-static assert(is(asPkStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [0], [])) == struct ));
+unittest {
+    static assert(is(asPkStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [0], [])) == struct ));
+    static assert( FieldNameTuple!(asPkStruct!Landings) == AliasSeq!("person_name", "planet_name"));
+}
 
 template asPkParamStruct(alias t)
 {
@@ -257,7 +265,11 @@ template asPkParamStruct(alias t)
     enum string def = "struct " ~ structName ~ " {" ~ asStruct_!(cols, "key") ~ "}";
     mixin(def ~"; alias asPkParamStruct = " ~ structName ~ ";");
 }
-static assert(is(asPkStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [0], [])) == struct ));
+unittest {
+    static assert(is(asPkStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [0], [])) == struct ));
+    static assert( FieldNameTuple!(asPkParamStruct!Landings) == AliasSeq!("keyperson_name", "keyplanet_name"));
+
+}
 
 template asSyncPkParamStruct(alias t)
 {
