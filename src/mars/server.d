@@ -21,6 +21,7 @@ version(unittest) import mars.starwars;
 
 import vibe.core.log;
 import vibe.data.json;
+import vibe.core.task;
 
 void InstantiateTables(alias tables, F...)(MarsServer m, F fixtures) {
     static assert( tables.length > 0 && fixtures.length > 0, "every table must have at least an empty fixtures array"); 
@@ -184,8 +185,9 @@ class MarsServer
         logInfo("mars - database handler starting.");
         
         //foreach(t; tables){ logInfo("mars - exposing table %s to clients", t); }
-        runTask(&handleDatabase);
+        if( databaseHandler == Task.init ) databaseHandler = runTask(&handleDatabase);
     }
+    Task databaseHandler;
 
 
     /**
@@ -199,6 +201,7 @@ class MarsServer
 
         while(true) {
             sleep(2.seconds);
+            logInfo("mars - database handler starting to check for sync...%s", Task.getThis());
 
             clientLoop: foreach(ref client; marsClients ){
                if( client.isConnected && client.authorised && client.db !is null ){
