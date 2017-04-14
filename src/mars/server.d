@@ -89,6 +89,12 @@ class MarsServer
         client.serverSideMethods = this.serverSideMethods;
     }
 
+    void wipeClientSideTablesFor(MarsClient* client) {
+        foreach(ref table; tables){
+            table.wipeClientSideTable(client.id);
+        }
+    }
+
     // The mars protocol has completed the handshake and setup, request can be sent and received.
     /// Called by 'protomars'  module.
     void onMarsProtocolReady(MarsClient* client){

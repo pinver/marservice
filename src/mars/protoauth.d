@@ -75,6 +75,7 @@ void protoAuth(S)(MarsClient* client, S socket)
 
 void protoDeauth(S)(MarsClient* client, S socket)
 {
+    marsServer.wipeClientSideTablesFor(client);
     auto request = socket.binaryAs!DiscardAuthenticationRequest;
     client.discardAuthorisation();
     auto reply = DiscardAuthenticationReply();
