@@ -28,7 +28,7 @@ import msgpack;
 import mars.defs;
 import mars.pgsql;
 import mars.msg;
-import mars.server;
+import mars.server : indexStatementFor;
 version(unittest) import mars.starwars;
 
 /**
