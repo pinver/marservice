@@ -39,7 +39,7 @@ unittest {
 private void InstantiateServerSideTable(immutable(Table) table, Fixtures)(MarsServer m, Fixtures fixtures){
     auto serverSideTable = new ServerSideTable!(MarsClient*, table)();
     m.tables ~= serverSideTable;
-  
+    
     static if( ! is(Fixtures == void[]) ){  // ... no fixtures, empty array of void ...
         foreach(fixture; fixtures){
             serverSideTable.loadFixture(serverSideTable.ColumnsStruct(fixture.expand));
@@ -210,13 +210,13 @@ class MarsServer
             logInfo("mars - database handler starting to check for sync...%s", Task.getThis());
 
             clientLoop: foreach(ref client; marsClients ){
-               if( client.isConnected && client.authorised && client.db !is null ){
+               if( client.isConnected && client.authorised ){
                    bool syncStarted = false;
                    logInfo("mars - database operations for client %s", client.id);
                    auto req = SyncOperationReq(SyncOperationReq.SyncOperation.starting);
                    foreach( table; tables ){
                        auto clientTable = table.clientSideTables[client.id];
-                       //logInfo("mars - database operations for client %s table %s", client.id, table.definition.name);
+                       logInfo("mars - database operations for client %s table %s", client.id, table.definition.name);
                        foreach(op; clientTable.ops){
                            if( ! syncStarted ){
                                syncStarted = true; 
@@ -228,7 +228,12 @@ class MarsServer
                                }
                            }
                            logInfo("mars - executing database operation for client %s", client.id);
-                           op.execute(client.db, &client, clientTable, table);
+                           if( table.definition.durable && client.db !is null ){
+                               op.execute(client.db, &client, clientTable, table);
+                           }
+                           else if( ! table.definition.durable ){
+                               op.execute(&client, clientTable, table);
+                           }
                            if( ! client.isConnected ){
                                logInfo("mars - the client %s seems disconnected after some operation, continuing with another client", client.id);
                                 continue clientLoop;
