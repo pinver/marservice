@@ -1,5 +1,6 @@
 module mars.protosub;
 
+import std.conv;
 import std.variant;
 import std.experimental.logger;
 import vibe.data.json;

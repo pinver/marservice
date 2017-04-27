@@ -31,6 +31,8 @@ import mars.msg;
 import mars.server : indexStatementFor;
 version(unittest) import mars.starwars;
 
+alias Bytes = immutable(ubyte)[];
+
 /**
 A server side table is instantiated only once per marsServer, and they are stored into the 'tables'
 structure of the marsServer.
@@ -56,7 +58,8 @@ class BaseServerSideTable(ClientT)
                 break;
         }
         // new client, new client side table
-        assert( (clientid in clientSideTables) is null, format("cliendid:%s, clientSideTables:%s", clientid, clientSideTables.keys() ) );
+        assert( (clientid in clientSideTables) is null, format("cliendid:%s, clientSideTables:%s",
+                    clientid, clientSideTables.keys() ) );
         clientSideTables[clientid] = cst;
 
         return cst;
@@ -120,21 +123,21 @@ class BaseServerSideTable(ClientT)
         }
     }
 
-    abstract immutable(ubyte)[] packRows(size_t offset = 0, size_t limit = long.max);
-    abstract immutable(ubyte)[] packRows(Database db, size_t offset = 0, size_t limit = long.max);
-    abstract size_t count() const;
+    abstract Bytes packRows(size_t offset = 0, size_t limit = long.max);
+    abstract Bytes packRows(Database db, size_t offset = 0, size_t limit = long.max);
+    //abstract size_t count() const;
     abstract size_t count(Database) const;
     abstract size_t countRowsToInsert() const;
     abstract size_t countRowsToUpdate() const;
     abstract size_t countRowsToDelete() const;
     abstract size_t index() const;
-    abstract immutable(ubyte)[] packRowsToInsert();
-    abstract immutable(ubyte)[] packRowsToUpdate();
-    abstract immutable(ubyte)[] packRowsToDelete();
+    abstract Bytes packRowsToInsert();
+    abstract Bytes packRowsToUpdate();
+    abstract Bytes packRowsToDelete();
 
-    abstract immutable(ubyte)[][2] insertRecord(Database, immutable(ubyte)[], ref InsertError, string, string);
-    abstract void updateRecord(Database, immutable(ubyte)[], immutable(ubyte)[], ref RequestState);
-    abstract immutable(ubyte)[]    deleteRecord(Database, immutable(ubyte)[], ref DeleteError, string, string);
+    abstract Bytes[2] insertRecord(Database, immutable(ubyte)[], ref InsertError, string, string);
+    abstract void updateRecord(Database, Bytes, immutable(ubyte)[], ref RequestState);
+    abstract Bytes    deleteRecord(Database, immutable(ubyte)[], ref DeleteError, string, string);
 
     abstract void unsafeReset();
 
@@ -164,7 +167,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     // interface needed to handle the records in a generic way ...
 
     /// returns the total number of records we are 'talking on' (filters? query?)
-    deprecated override size_t count() const { return fixtures.length; }
+    //deprecated override size_t count() const { return fixtures.length; }
     override size_t count(Database db) const {
         static if( table.durable ){
             return db.executeScalarUnsafe!size_t("select count(*) from %s".format(table.name));
@@ -184,7 +187,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 
     /// returns 'limit' rows starting from 'offset'.
     deprecated auto selectRows(size_t offset = 0, size_t limit = long.max) const  {
-        size_t till  = (limit + offset) > count ? count : (limit + offset);
+        size_t till  = (limit + offset) > count(null) ? count(null) : (limit + offset);
         return fixtures.values()[offset .. till];
     }
     /// returns 'limit' rows starting from 'offset'.
@@ -239,7 +242,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     /// insert a new row in the server table, turning clients table out of sync
-    ColumnsStruct insertRecord(Database db, ColumnsStruct record, ref InsertError err, string username, string clientid){
+    ColumnsStruct insertRecord(Database db, ColumnsStruct record, ref InsertError err, string username,string clientid){
         KeysStruct keys = pkValues!table(record);
         static if(table.durable){
             auto inserted = db.executeInsert!(table, ColumnsStruct)(record, err);
@@ -252,13 +255,17 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             static if(table.decorateRows){
                 asSyncStruct!table rec;
                 assignCommonFields(rec, record);
-                with(rec){ mars_who = username ~ "@" ~ clientid; mars_what = "inserted"; mars_when = Clock.currTime.toString(); }
+                with(rec){
+                    mars_who = username ~ "@" ~ clientid; mars_what = "inserted";
+                    mars_when = Clock.currTime.toString();
+                }
             }
             else {
                 auto rec = record;
             }
             toInsert[keys] = rec;
-            // ... don't propagate if not cached, or we are triggering a loot of refresh: stick with manual refresh done on client.
+            // ... don't propagate if not cached, or we are triggering a loot of refresh
+            //     stick with manual refresh done on client.
             if(table.cacheRows){
                 foreach(ref cst; clientSideTables.values){
                     cst.ops ~= new ClientInsertValues!ClientT();
@@ -268,7 +275,8 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         return inserted;
     }
 
-    override immutable(ubyte)[][2] insertRecord(Database db, immutable(ubyte)[] data, ref InsertError err, string username, string clientId){
+    override Bytes[2]
+    insertRecord(Database db, Bytes data, ref InsertError err, string username, string clientId){
         import  msgpack : pack, unpack, MessagePackException;
         ColumnsStruct record;
         try {
@@ -287,7 +295,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         ];
     }
 
-    override void updateRecord(Database db, immutable(ubyte)[] encodedKeys, immutable(ubyte)[] encodedRecord, ref RequestState state){
+    override void updateRecord(Database db, Bytes encodedKeys, immutable(ubyte)[] encodedRecord, ref RequestState state){
         asPkStruct!table keys;
         ColumnsStruct record;
         try { 
@@ -310,7 +318,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         else { assert(false); }
     }
 
-    override immutable(ubyte)[] deleteRecord(Database db, immutable(ubyte)[] data, ref DeleteError err, string username, string clientid){
+    override Bytes deleteRecord(Database db, immutable(ubyte)[] data, ref DeleteError err, string username, string clientid){
         import msgpack : pack, unpack, MessagePackException;
         asPkParamStruct!table keys;
         try {
@@ -444,18 +452,18 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     /// returns the packet selected rows
-    override immutable(ubyte)[] packRows(size_t offset = 0, size_t limit = long.max) const {
+    override Bytes packRows(size_t offset = 0, size_t limit = long.max) const {
         import msgpack : pack;
         return pack!(true)(selectRows(null, offset, limit)).idup;
     }
     /// returns the packet selected rows
-    override immutable(ubyte)[] packRows(Database db, size_t offset = 0, size_t limit = long.max) const {
+    override Bytes packRows(Database db, size_t offset = 0, size_t limit = long.max) const {
         import msgpack : pack;
         return pack!(true)(selectRows(db, offset, limit)).idup;
     }
 
     /// return the packet rows to insert in the client
-    override immutable(ubyte)[] packRowsToInsert() {
+    override Bytes packRowsToInsert() {
         import msgpack : pack;
         auto packed = pack!(true)(toInsert.values()).idup;
         //toInsert = null; can't reset... this is called for every client
@@ -463,7 +471,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     /// return the packet rows to delete in the client
-    override immutable(ubyte)[] packRowsToDelete() {
+    override Bytes packRowsToDelete() {
         import msgpack : pack;
         asSyncPkParamStruct!(table)[] whereKeys;
         foreach(key; toDelete.keys()){
@@ -478,7 +486,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     /// return the packet rows to update in the client
-    override immutable(ubyte)[] packRowsToUpdate() {
+    override Bytes packRowsToUpdate() {
         static struct UpdateRecord {
             KeysStruct keys;
             asStruct!table record;
@@ -567,7 +575,7 @@ private
             import std.conv : to;
 
             // ... if the table is empty, simply do nothing ...
-            if( sst.count > 0 ){
+            if( sst.count(null) > 0 ){
                 auto payload = sst.packRows();
 
                 auto req = ImportRecordsReq();  with(req){
