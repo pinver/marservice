@@ -295,7 +295,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         ];
     }
 
-    override void updateRecord(Database db, Bytes encodedKeys, immutable(ubyte)[] encodedRecord, ref RequestState state){
+    override void updateRecord(Database db, Bytes encodedKeys, Bytes encodedRecord, ref RequestState state){
         asPkStruct!table keys;
         ColumnsStruct record;
         try { 
@@ -303,7 +303,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             record = unpack!(ColumnsStruct, true)(encodedRecord);
         }
         catch(MessagePackException exc){
-            errorf("mars - failed to unpack keys for record to update '%s': maybe a wrong type of data in js", table.name);
+            errorf("mars - failed to unpack keys for record to update '%s': maybe a wrong type in js", table.name);
             errorf(exc.toString);
             state = RequestState.rejectedAsDecodingFailed;
             return;
@@ -318,14 +318,14 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         else { assert(false); }
     }
 
-    override Bytes deleteRecord(Database db, immutable(ubyte)[] data, ref DeleteError err, string username, string clientid){
+    override Bytes deleteRecord(Database db, Bytes data, ref DeleteError err, string username, string clientid){
         import msgpack : pack, unpack, MessagePackException;
         asPkParamStruct!table keys;
         try {
             keys = unpack!(asPkParamStruct!table, true)(data);
         }
         catch(MessagePackException exc){
-            errorf("mars - failed to unpack keys for record to delete '%s': maybe a wrong type of data in js", table.name);
+            errorf("mars - failed to unpack keys for record to delete '%s': maybe a wrong type in js", table.name);
             errorf(exc.toString);
             err = DeleteError.unknownError;
             return data;
@@ -335,7 +335,8 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         return [];
     }
 
-    asPkParamStruct!table deleteRecord(Database db, asPkParamStruct!table keys, ref DeleteError err, string username, string clientid){
+    asPkParamStruct!table
+    deleteRecord(Database db, asPkParamStruct!table keys, ref DeleteError err, string username, string clientid){
         KeysStruct k;
         assignFields(k, keys);
         static if(table.durable){
@@ -545,15 +546,16 @@ private
     enum Strategy { easilySyncAll, easilySyncNone }
 
     class SynOp(MarsClientT) {
-        abstract void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst);
-        abstract void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst);
+        abstract void execute(MarsClientT, ClientSideTable!(MarsClientT)*, BaseServerSideTable!MarsClientT);
+        abstract void execute(Database, MarsClientT, ClientSideTable!(MarsClientT)*, BaseServerSideTable!MarsClientT);
     }
 
     /// take all the rows in the server table and send them on the client table.
     class ClientImportValues(MarsClientT) : SynOp!MarsClientT {
 
-        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
-        {
+        override void execute(
+            Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst
+        ){
             assert(db !is null);
 
             // ... if the table is empty, simply do nothing ...
@@ -569,7 +571,9 @@ private
                 if(marsClient.isConnected) auto rep = marsClient.receiveReply!ImportRecordsRep();
             }
         }
-        override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
+        
+        override
+        void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
         {
             import mars.msg : ImportValuesRequest;
             import std.conv : to;
@@ -590,8 +594,9 @@ private
     }
 
     class ClientInsertValues(MarsClientT) : SynOp!MarsClientT {
-        
-        override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
+
+        override
+        void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
         {
             if( sst.countRowsToInsert > 0 ){
                 auto payload = sst.packRowsToInsert();
@@ -604,8 +609,10 @@ private
                 if(marsClient.isConnected) auto rep = marsClient.receiveReply!InsertRecordsRep();
             }
         }
-        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
-        {
+        override
+        void execute(
+            Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst
+        ){
             if( sst.countRowsToInsert > 0 ){
                 auto payload = sst.packRowsToInsert();
                 auto req = InsertRecordsReq(); with(req){
@@ -618,10 +625,11 @@ private
             }
         }
     }
-    
+
     class ClientDeleteValues(MarsClientT) : SynOp!MarsClientT {
-        
-        override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
+
+        override
+        void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
         {
             if( sst.countRowsToDelete > 0 ){
                 auto payload = sst.packRowsToDelete();
@@ -634,7 +642,10 @@ private
                 if(marsClient.isConnected) auto rep = marsClient.receiveReply!DeleteRecordsRep();
             }
         }
-        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst){
+        override
+        void execute(
+            Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst
+        ){
             if( sst.countRowsToDelete > 0 ){
                 auto payload = sst.packRowsToDelete();
                 auto req = DeleteRecordsReq(); with(req){
@@ -650,7 +661,8 @@ private
 
     class ClientUpdateValues(MarsClientT) : SynOp!MarsClientT {
 
-        override void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
+        override
+        void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
         {
             import mars.msg : UpdateValuesRequest;
             import std.conv :to;
@@ -663,12 +675,14 @@ private
                 marsClient.sendRequest(req);
             }
         }
-        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst){}
+
+        override void execute(Database db, MarsClientT mc, ClientSideTable!(MarsClientT)* cst,
+                BaseServerSideTable!MarsClientT sst){}
     }
 
     class ServerUpdateValues(MarsClientT) : SynOp!MarsClientT {
-        override void execute(Database db, MarsClientT marsClient, ClientSideTable* cst, BaseServerSideTable!MarsClientT sst){
-        }
+        override void execute(Database db, MarsClientT marsClient, ClientSideTable* cst,
+                BaseServerSideTable!MarsClientT sst){}
     }
 }
 
