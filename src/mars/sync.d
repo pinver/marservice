@@ -71,6 +71,7 @@ class BaseServerSideTable(ClientT)
     auto selectAsJson(Database db, string sqlSelect, Variant[string] parameters) in {
         assert(db !is null);
     } body {
+        import std.math : isNaN;
         import vibe.data.json;
 
         auto resultSet = db.executeQueryUnsafe(sqlSelect, parameters);
@@ -105,6 +106,17 @@ class BaseServerSideTable(ClientT)
             auto json = table.selectAsJson(db, "select * from people", null);
             //import std.stdio; writeln(json.toPrettyString());
             assert(json[0][0] == "Luke");
+        }
+        unittest {
+            import std.math : isNaN;
+            import vibe.data.json : Json;
+
+            AuthoriseError err; auto db = DatabaseService("127.0.0.1", 5432, "starwars").connect("jedi", "force", err);
+            auto table = new WhiteHole!BaseServerSideTable(Table());
+            auto json = table.selectAsJson(db, "select * from starships", null);
+            assert(json[0][0] == "NanShip");
+            // here we have a BIG problem: NaN is not encodable in Json! The value is 'null'!
+            // assert(json[0][1].get!float().isNaN);
         }
     }
 
