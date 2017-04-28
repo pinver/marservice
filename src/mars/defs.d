@@ -273,14 +273,15 @@ unittest {
 
 template asSyncPkParamStruct(alias t)
 {
+    enum string structName = t.name ~ "SyncPkParamRow";
     static if( t.pkCols.length >0 ){
-        enum cols = t.pkCols ~ SyncCols;
+        enum pkCols = t.pkCols;
+        enum string def = "struct " ~ structName ~ " {" ~ asStruct_!(pkCols, "key") ~ asStruct_!(SyncCols) ~ "}";
     }
     else {
         enum cols = t.decoratedCols;
+        enum string def = "struct " ~ structName ~ " {" ~ asStruct_!(cols, "key") ~ "}";
     }
-    enum string structName = t.name ~ "SyncPkParamRow";
-    enum string def = "struct " ~ structName ~ " {" ~ asStruct_!(cols, "key") ~ "}";
     mixin(def ~"; alias asSyncPkParamStruct = " ~ structName ~ ";");
 }
 static assert(is(asPkParamStruct!(Table("t", [immutable(Col)("c1", Type.integer), immutable(Col)("c2", Type.text)], [0], [])) == struct ));

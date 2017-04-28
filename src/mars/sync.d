@@ -476,10 +476,12 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         import msgpack : pack;
         asSyncPkParamStruct!(table)[] whereKeys;
         foreach(key; toDelete.keys()){
+            import std.stdio; writeln("+++++++++++++>>>>", key, ":", toDelete[key]);
             asSyncPkParamStruct!table whereKey;
             assignFields(whereKey, key);
             static if(table.decorateRows) assignCommonFields(whereKey, toDelete[key]);
             whereKeys ~= whereKey;
+            writeln("<<<=== M<<<<<<<<<<", whereKey);
         }
         auto packed = pack!(true)(whereKeys).idup;
         //toInsert = null; can't reset... this is called for every client
