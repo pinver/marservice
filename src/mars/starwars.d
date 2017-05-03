@@ -14,6 +14,7 @@ module mars.starwars;
             immutable(Table)("scores", [Col("score", Type.integer)], [], [], 3, No.durable, No.decorateRows, Yes.cached),
             immutable(Table)("landings", [Col("person_name", Type.text), Col("planet_name", Type.text), Col("landings", Type.integer)], [0, 1], [], 4, Yes.durable, Yes.decorateRows, Yes.cached),
             immutable(Table)("starships", [Col("name", Type.text), Col("hyperdrive_rating", Type.real_)], [0], [], 5, Yes.durable, No.decorateRows, No.cached),
+            immutable(Table)("council", [Col("name", Type.text)], [0], [Reference([0], "people", [0]),], 6, Yes.durable, No.decorateRows, Yes.cached),
         ]);
     }
     auto People(){ return starwarsSchema.tableNamed("people"); };

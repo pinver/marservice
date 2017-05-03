@@ -169,8 +169,23 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     /// returns the total number of records we are 'talking on' (filters? query?)
     //deprecated override size_t count() const { return fixtures.length; }
     override size_t count(Database db) const {
+        import ddb.postgres : ServerErrorException;
+
         static if( table.durable ){
-            return db.executeScalarUnsafe!size_t("select count(*) from %s".format(table.name));
+            try {
+                return db.executeScalarUnsafe!size_t("select count(*) from %s".format(table.name));
+            }
+            catch(ServerErrorException e){
+                switch(e.code){
+                    case "42501": // permission denied for relation "relation"
+                        infof("Permission denied:%s", e.toString());
+                        return 0;
+                    default:
+                        warningf("mars - x ... x - Unhandled PostgreSQL exception during 'count'");
+                        info(e.toString());
+                        throw e;
+                }
+            }
         }
         else {
             return fixtures.length;
