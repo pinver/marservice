@@ -24,7 +24,7 @@ void setupMars()
     enum marsConf = MarsServer
         .ExposeSchema(starwarsSchema())
         .PostgreSQL("127.0.0.1", 5432, "starwars")
-        //.Autologin("jedi", "force")
+        .Autologin("jedi", "force")
         ;
 
     string exposedMethods(MarsClient marsClient, string methodName, Json parameters){

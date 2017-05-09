@@ -18,6 +18,20 @@ unittest {
     auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[],[]).selectFrom;
     assert( sql == "select * from bar", sql );
 }
+
+string selectFromWhere(const(Table) table)
+{
+    auto cols = table.pkCols.length >0? table.pkCols : table.columns;
+    return "select * from %s where %s".format(
+        table.name,
+        cols.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+    );
+}
+unittest {
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).selectFromWhere;
+    assert( sql == "select * from bar where foo = $keyfoo", sql );
+}
+
 string insertIntoParameter(const(Table) table)
 {
     auto columns = table.decorateRows? table.decoratedCols : table.columns;

@@ -1,7 +1,7 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"ddb": "~master",
+		"ddb": "0.2.6",
 		"diet-ng": "1.2.1",
 		"eventcore": "0.8.10",
 		"libasync": "0.8.3",
