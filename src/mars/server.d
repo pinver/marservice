@@ -197,26 +197,29 @@ class MarsServer
                    logInfo("mars - database operations for client %s", client.id);
                    auto req = SyncOperationReq(SyncOperationReq.SyncOperation.starting);
                    foreach( table; tables ){
-                       auto clientTable = table.clientSideTables[client.id];
-                       //logInfo("mars - database operations for client %s table %s", client.id, table.definition.name);
-                       foreach(op; clientTable.ops){
-                           if( ! syncStarted ){
-                               syncStarted = true; 
-                               client.sendRequest(req);
-                               logInfo("mars - database operations for client %s sync started", client.id);
-                               if( ! client.isConnected ){
-                                   logInfo("mars - the client %s seems disconnected, continuing with another client", client.id);
-                                   continue clientLoop;
-                               }
-                           }
-                           logInfo("mars - executing database operation for client %s", client.id);
-                           op.execute(client.db, &client, clientTable, table);
-                           if( ! client.isConnected ){
-                               logInfo("mars - the client %s seems disconnected after some operation, continuing with another client", client.id);
-                                continue clientLoop;
-                           }
-                       }
-                       clientTable.ops = []; // XXX gestisci le singole failure...
+                        if(client.id in table.clientSideTables)
+                        {
+                            auto clientTable = table.clientSideTables[client.id];
+                            //logInfo("mars - database operations for client %s table %s", client.id, table.definition.name);
+                            foreach(op; clientTable.ops){
+                                if( ! syncStarted ){
+                                    syncStarted = true; 
+                                    client.sendRequest(req);
+                                    logInfo("mars - database operations for client %s sync started", client.id);
+                                    if( ! client.isConnected ){
+                                        logInfo("mars - the client %s seems disconnected, continuing with another client", client.id);
+                                        continue clientLoop;
+                                    }
+                                }
+                                logInfo("mars - executing database operation for client %s", client.id);
+                                op.execute(client.db, &client, clientTable, table);
+                                if( ! client.isConnected ){
+                                    logInfo("mars - the client %s seems disconnected after some operation, continuing with another client", client.id);
+                                        continue clientLoop;
+                                }
+                            }
+                            clientTable.ops = []; // XXX gestisci le singole failure...
+                        }
                    }
                    if( syncStarted ){
                        req.operation = SyncOperationReq.SyncOperation.completed;
