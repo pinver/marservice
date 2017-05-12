@@ -322,7 +322,6 @@ private {
     }
     unittest {
         auto r = xxx("select * from planets where name=$name", ["name": Variant("Tatooine")]);
-        import std.stdio; writeln(r);
     }
 }
 
