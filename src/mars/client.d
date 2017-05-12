@@ -142,7 +142,7 @@ struct MarsClient
     }
 
     void vueUpdateRecord(ulong tableIndex, immutable(ubyte)[] keys, immutable(ubyte)[] record, ref RequestState state){
-        marsServer.tables[tableIndex].updateRecord(db, keys, record, state);
+        marsServer.tables[tableIndex].updateRecord(db, keys, record, state, id);
     }
 
     auto vueSubscribe(string select, Variant[string] parameters, ref RequestState state){

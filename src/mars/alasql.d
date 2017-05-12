@@ -73,6 +73,21 @@ unittest {
     assert( sql == "update bar set mars_who = $mars_who, mars_what = $mars_what, mars_when = $mars_when where foo = $keyfoo AND baz = $keybaz", sql );
 }
 
+string updateDecoratedRecord(const(Table) table)
+{
+    auto pkKeys = table.pkCols.length >0? table.pkCols : table.columns;
+    auto cols = table.columns.map!"a.name".array ~ ["mars_who", "mars_what", "mars_when"];
+    return "update %s set %s where %s".format(
+        table.name,
+        cols.map!( (c) => c ~ " = $" ~ c).join(", "),
+        pkKeys.map!( (c) => c.name ~ " = $key" ~ c.name).join(" AND "),
+    );
+}
+unittest {
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false), Col("bak", Type.text)],[0, 1],[]).updateDecorationsParameter;
+    assert( sql == "update bar set foo = $foo, baz = $baz, bak = $bak, mars_who = $mars_who, mars_what = $mars_what, mars_when = $mars_when where foo = $keyfoo AND baz = $keybaz", sql );
+}
+
 string deleteFromParameter(const(Table) table)
 {
     auto cols = table.pkCols.length >0? table.pkCols : table.columns;

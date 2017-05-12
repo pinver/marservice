@@ -160,7 +160,7 @@ class MarsServer
     static MarsServerConfiguration ExposeSchema(immutable(Schema) schema)
     {
         import mars.alasql : createDatabase, selectFrom, selectFromWhere, insertIntoParameter, updateParameter,
-               deleteFromParameter, updateDecorationsParameter, pkValuesJs, pkValuesWhereJs;
+               deleteFromParameter, updateDecorationsParameter, updateDecoratedRecord, pkValuesJs, pkValuesWhereJs;
         
         immutable(string)[] statements;
         immutable(string)[] jsStatements;
@@ -175,6 +175,7 @@ class MarsServer
             statements ~= table.updateDecorationsParameter;    // 'updateDecorations'
             statements ~= table.selectFrom;
             statements ~= table.selectFromWhere;               // 'selectFromWhere'
+            statements ~= table.updateDecoratedRecord;         // 'updateDecoratedRecord'
             // update the 'indexStatementFor' below in this module...
             jsStatements ~= table.pkValuesJs;
             jsStatements ~= table.pkValuesWhereJs;
@@ -261,25 +262,27 @@ __gshared MarsServer marsServer;
 
 // adjust the same function in mars.ts server
 ulong indexStatementFor(ulong table, string op){
-    enum ops = 6; // XXX
+    enum ops = 7; // XXX
     if      (op == "insert"){ return table * ops + 0; }
     else  if(op == "update"){ return table * ops + 1; }
     else  if(op == "delete"){ return table * ops + 2; }
     else  if(op == "updateDecorations"){ return table * ops + 3; }
     else  if(op == "select"){ return table * ops + 4; }
     else  if(op == "selectFromWhere"){ return table * ops + 5; }
+    else  if(op == "updateDecoratedRecord"){ return table * ops + 6; }
     assert(false, "unknown ops!");
 }
 enum jsIndexStatementFor = `(
 function a(table, op)
 {
-    const ops = 6;
+    const ops = 7;
     if      (op == "insert"){ return table * ops + 0; }
     else  if(op == "update"){ return table * ops + 1; }
     else  if(op == "delete"){ return table * ops + 2; }
     else  if(op == "updateDecorations"){ return table * ops + 3; }
     else  if(op == "select"){ return table * ops + 4; }
     else  if(op == "selectFromWhere"){ return table * ops + 5; }
+    else  if(op == "updateDecoratedRecord"){ return table * ops + 6; }
     alert("unknown ops!");
 })
 `;

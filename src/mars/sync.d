@@ -136,7 +136,7 @@ class BaseServerSideTable(ClientT)
     abstract Bytes packRowsToDelete();
 
     abstract Bytes[2] insertRecord(Database, immutable(ubyte)[], ref InsertError, string, string);
-    abstract void updateRecord(Database, Bytes, immutable(ubyte)[], ref RequestState);
+    abstract void updateRecord(Database, Bytes, immutable(ubyte)[], ref RequestState, string);
     abstract Bytes    deleteRecord(Database, immutable(ubyte)[], ref DeleteError, string, string);
 
     abstract void unsafeReset();
@@ -310,7 +310,7 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
         ];
     }
 
-    override void updateRecord(Database db, Bytes encodedKeys, Bytes encodedRecord, ref RequestState state){
+    override void updateRecord(Database db, Bytes encodedKeys, Bytes encodedRecord, ref RequestState state, string clientId){
         asPkStruct!table keys;
         ColumnsStruct record;
         try { 
@@ -323,10 +323,10 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             state = RequestState.rejectedAsDecodingFailed;
             return;
         }
-        updateRecord(db, keys, record, state);
+        updateRecord(db, keys, record, state, clientId);
     }
 
-    void updateRecord(Database db, asPkStruct!table keys, ColumnsStruct record, ref RequestState state){
+    void updateRecord(Database db, asPkStruct!table keys, ColumnsStruct record, ref RequestState state, string clientId){
         static if(table.durable){
             db.executeUpdate!(table, asPkStruct!table, ColumnsStruct)(keys, record, state);
         }
@@ -346,8 +346,9 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             }
             toUpdate[keys] = rec;
             if(table.cacheRows){
-                foreach(ref cst; clientSideTables.values){
-                    cst.ops ~= new ClientUpdateValues!ClientT();
+                foreach(key; clientSideTables.byKey.filter!( (a) => a != clientId )){
+                    auto cst = key in clientSideTables;
+                    (*cst).ops ~= new UpdateClientRecords!ClientT();
                 }
             }
         }
@@ -545,7 +546,6 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
 
         import msgpack : pack;
         auto packed = pack!(true)(records).idup;
-        //toUpdate = null; can't reset... this is called for every client
         return packed;
     }
 
@@ -593,7 +593,8 @@ private
     enum Strategy { easilySyncAll, easilySyncNone }
 
     class SynOp(MarsClientT) {
-        abstract void execute(MarsClientT, ClientSideTable!(MarsClientT)*, BaseServerSideTable!MarsClientT);
+        /// deprecated way of proceding: use the method below with a null database
+        void execute(MarsClientT, ClientSideTable!(MarsClientT)*, BaseServerSideTable!MarsClientT){ assert(false); }
         abstract void execute(Database, MarsClientT, ClientSideTable!(MarsClientT)*, BaseServerSideTable!MarsClientT);
     }
 
@@ -709,7 +710,7 @@ private
     class ClientUpdateValues(MarsClientT) : SynOp!MarsClientT {
 
         override
-        void execute(MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
+        void execute(MarsClientT marsclient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst)
         {
             import mars.msg : UpdateValuesRequest;
             import std.conv :to;
@@ -719,11 +720,11 @@ private
                 auto req = UpdateValuesRequest();
                 req.statementIndex = indexStatementFor(sst.index, "update").to!int;
                 req.bytes = payload;
-                marsClient.sendRequest(req);
+                marsclient.sendRequest(req);
             }
         }
 
-        override void execute(Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst,
+        override void execute(Database db, MarsClientT marsclient, ClientSideTable!(MarsClientT)* cst,
                 BaseServerSideTable!MarsClientT sst)
         {
             import mars.msg : UpdateValuesRequest;
@@ -734,7 +735,7 @@ private
                 auto req = UpdateValuesRequest();
                 req.statementIndex = indexStatementFor(sst.index, "update").to!int;
                 req.bytes = payload;
-                marsClient.sendRequest(req);
+                marsclient.sendRequest(req);
             }
 
         }
@@ -743,6 +744,21 @@ private
     class ServerUpdateValues(MarsClientT) : SynOp!MarsClientT {
         override void execute(Database db, MarsClientT marsClient, ClientSideTable* cst,
                 BaseServerSideTable!MarsClientT sst){}
+    }
+
+    class UpdateClientRecords(MarsClientT) : SynOp!MarsClientT {
+        override
+        void execute(Database db, MarsClientT marsClient, ClientSideTable!MarsClientT* cst, BaseServerSideTable!MarsClientT sst)
+        {
+            import mars.msg : UpdateRecordsReq;
+
+            if( sst.countRowsToUpdate > 0 ){
+                auto req = UpdateRecordsReq();
+                req.tableIndex = sst.index;
+                req.encodedRecords = sst.packRowsToUpdate();
+                marsClient.sendRequest(req);
+            }
+        }
     }
 }
 

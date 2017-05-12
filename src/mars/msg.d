@@ -17,6 +17,7 @@ enum MsgTypeStoC {
     importRecordsReq = 64, importRecordsRep,
     deleteRecordsReq = 66, deleteRecordsRep,
     insertRecordsReq = 68, insertRecordsRep,
+    updateRecordsReq = 70, updateRecordsRep,
 }
 
 
@@ -60,6 +61,12 @@ struct ImportRecordsReq {
     static immutable type = MsgTypeStoC.importRecordsReq;
     ulong tableIndex;
     ulong statementIndex;
+    immutable(ubyte)[] encodedRecords;
+}
+
+struct UpdateRecordsReq {
+    static immutable type = MsgTypeStoC.updateRecordsReq;
+    ulong tableIndex;
     immutable(ubyte)[] encodedRecords;
 }
 
