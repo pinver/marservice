@@ -6,6 +6,7 @@ import std.datetime,
        std.variant,
        std.experimental.logger;
 
+import vibe.core.core;
 import vibe.core.log;
 import vibe.data.json;
 import vibe.http.websockets;
@@ -87,9 +88,10 @@ struct MarsClient
 
     /**
      * The Helo protocol will wire the active socket here, and will set this to null when disconnecting. */
-    void wireSocket(MarsProxyStoC!WebSocket socket)
+    void wireSocket(MarsProxyStoC!WebSocket socket, Task task)
     {
         this.socket = socket;
+        this.stocTask = task;
     }
 
     /**
@@ -167,6 +169,7 @@ struct MarsClient
         string seed;
 
         MarsProxyStoC!WebSocket socket;
+        public Task stocTask;
         
         public typeof(MarsServer.serverSideMethods) serverSideMethods;
         DatabaseService databaseService;

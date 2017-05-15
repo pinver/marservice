@@ -46,9 +46,6 @@ void handleWebSocketConnectionClientToService(scope WebSocket socket)
     import mars.protohelo : protoHelo;
     //protoHelo(Proxy(dataDispatcherTask, &receiveMode));
     protoHelo(socket);
-
-    // ... we have terminated the client process, 
-    
 }
 
 /**
@@ -77,10 +74,11 @@ void handleWebSocketConnectionServiceToClient(scope WebSocket socket)
         return;
     }
     import mars.protomars : MarsProxyStoC;
-    client.wireSocket(MarsProxyStoC!WebSocket(socket, clientId));
+    client.wireSocket(MarsProxyStoC!WebSocket(socket, clientId), Task.getThis);
 
     logInfo("mars - S ... C - waiting for termination");
     string terminate = receiveOnly!string();
+    logInfo("mars - S ... C - received the terminate signal:%s", terminate);
 }
 
 struct Proxy {

@@ -18,6 +18,8 @@ import mars.protomars;
  */
 void protoHelo(T)(T socket)
 {
+    import vibe.core.concurrency : send;
+
     assert(marsServer !is null);
 
     // ... verify that it's a mars client ...
@@ -36,6 +38,10 @@ void protoHelo(T)(T socket)
     scope(exit){
         // ... we have done, also on unwind, inform the server that this client socket is no more active.
         marsServer.disposeClient(marsClient);
+
+        logInfo("mars - C ... S - sending terminate to the other socker handler");
+        marsClient.stocTask.send("helo_exiting");
+        logInfo("mars - C ... S - sent terminate to the other socket handler");
     }
 
     auto reply = marsClient.reconnections.length > 1? "marsreconnected" : "marswelcome";

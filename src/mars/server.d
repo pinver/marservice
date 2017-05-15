@@ -204,12 +204,13 @@ class MarsServer
     {
         import std.algorithm : sort;
         import std.datetime : seconds;
-        import vibe.core.core : sleep;
+        import vibe.core.core : sleep, exitEventLoop;
         import vibe.core.log : logInfo;
 
+        scope(failure) exitEventLoop();
         while(true) {
             sleep(2.seconds);
-            logInfo("mars - database handler starting to check for sync...%s", Task.getThis());
+            //logInfo("mars - database handler starting to check for sync...%s", Task.getThis());
 
             clientLoop: foreach(ref client; marsClients ){
                if( client.isConnected && client.authorised ){
