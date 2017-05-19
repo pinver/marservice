@@ -160,7 +160,8 @@ class MarsServer
     static MarsServerConfiguration ExposeSchema(immutable(Schema) schema)
     {
         import mars.alasql : createDatabase, selectFrom, selectFromWhere, insertIntoParameter, updateParameter,
-               deleteFromParameter, updateDecorationsParameter, updateDecoratedRecord, pkValuesJs, pkValuesWhereJs;
+               deleteFromParameter, updateDecorationsParameter, updateDecoratedRecord, 
+               pkValuesJs, pkValuesWhereJs, referenceJs;
         
         immutable(string)[] statements;
         immutable(string)[] jsStatements;
@@ -177,8 +178,11 @@ class MarsServer
             statements ~= table.selectFromWhere;               // 'selectFromWhere'
             statements ~= table.updateDecoratedRecord;         // 'updateDecoratedRecord'
             // update the 'indexStatementFor' below in this module...
+
+            // ... update in server.ts under the 'prepareJsStatements' method
             jsStatements ~= table.pkValuesJs;
             jsStatements ~= table.pkValuesWhereJs;
+            jsStatements ~= referenceJs(table, schema);
         }
         return MarsServerConfiguration( schema, createDatabase(schema), statements, jsStatements );
     }

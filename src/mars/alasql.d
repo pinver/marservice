@@ -84,7 +84,7 @@ string updateDecoratedRecord(const(Table) table)
     );
 }
 unittest {
-    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false), Col("bak", Type.text)],[0, 1],[]).updateDecorationsParameter;
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false), Col("bak", Type.text)],[0, 1],[]).updateDecoratedRecord;
     assert( sql == "update bar set foo = $foo, baz = $baz, bak = $bak, mars_who = $mars_who, mars_what = $mars_what, mars_when = $mars_when where foo = $keyfoo AND baz = $keybaz", sql );
 }
 
@@ -124,6 +124,31 @@ unittest {
     auto js = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[0],[]).pkValuesWhereJs;
     assert( js == "(function a(r){ return { keyfoo: r.foo }; })", js);
 }
+
+string referenceJs(const(Table) table, const(Schema) schema)
+{
+    auto references = table.references;
+    string[] rrr;
+    foreach(reference; references){
+        auto referencedTable = schema.tableNamed(reference.referencedTable);
+        rrr ~= ["{ referenceCols: [%s], referencedTable: '%s', referencedCols: [%s] }".format(
+            reference.referenceCols.map!((i) => "'" ~ table.columns[i].name ~ "'").join(", "),
+            reference.referencedTable,
+            reference.referencedCols.map!((i) => "'" ~ referencedTable.columns[i].name ~ "'").join(", ")
+        )];
+    }
+    string sss = "(function a(c) { return " ~ rrr.join(", ") ~ "; })";
+    return sss;
+}
+unittest {
+    enum sc = Schema("testschema", [
+        immutable Table("bar1", [Col("foo", Type.text, false), Col("poo", Type.text, false)], [0, 1], [] ),
+        immutable Table("bar2", [Col("foo", Type.text, false), Col("poo", Type.text, false)], [], [Reference([0,1], "bar1", [0,1])]),
+    ]);
+    enum eee = referenceJs(sc.tables[1], sc);
+    static assert( eee == "(function a(c) { return { referenceCols: ['foo', 'poo'], referencedTable: 'bar1', referencedCols: ['foo', 'poo'] }; })", eee);
+}
+
 
 string createDatabase(const(Schema) schema)
 {
