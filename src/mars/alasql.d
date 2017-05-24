@@ -131,22 +131,24 @@ string referenceJs(const(Table) table, const(Schema) schema)
     string[] rrr;
     foreach(reference; references){
         auto referencedTable = schema.tableNamed(reference.referencedTable);
-        rrr ~= ["{ referenceCols: [%s], referencedTable: '%s', referencedCols: [%s] }".format(
+        rrr ~= ["{ referenceCols: [%s], referencedTable: '%s', referencedIndex: %d, referencedCols: [%s] }".format(
             reference.referenceCols.map!((i) => "'" ~ table.columns[i].name ~ "'").join(", "),
             reference.referencedTable,
+            referencedTable.index,
             reference.referencedCols.map!((i) => "'" ~ referencedTable.columns[i].name ~ "'").join(", ")
         )];
     }
-    string sss = "(function a(c) { return " ~ rrr.join(", ") ~ "; })";
+    string sss = "(function a(c) { return [" ~ rrr.join(", ") ~ "]; })";
     return sss;
 }
 unittest {
     enum sc = Schema("testschema", [
         immutable Table("bar1", [Col("foo", Type.text, false), Col("poo", Type.text, false)], [0, 1], [] ),
+        immutable Table("bar1", [Col("foo", Type.text, false), Col("poo", Type.text, false)], [0, 1], [] ),
         immutable Table("bar2", [Col("foo", Type.text, false), Col("poo", Type.text, false)], [], [Reference([0,1], "bar1", [0,1])]),
     ]);
     enum eee = referenceJs(sc.tables[1], sc);
-    static assert( eee == "(function a(c) { return { referenceCols: ['foo', 'poo'], referencedTable: 'bar1', referencedCols: ['foo', 'poo'] }; })", eee);
+    static assert( eee == "(function a(c) { return [{ referenceCols: ['foo', 'poo'], referencedTable: 'bar1', referencedIndex: 1, referencedCols: ['foo', 'poo'] }]; })", eee);
 }
 
 
@@ -262,11 +264,11 @@ string toSql(Type t){
         case bytea: return "bytea";
 
         // right now handle as a smallint, insert client side not implemented right now
+        case serial: return "integer";
         case smallserial: return "smallint";
 
         case unknown:
         case date:
-        case serial:
         case varchar: // varchar(n), tbd as column
             assert(false, t.to!string); // not implemented right now, catch at CT
     }
