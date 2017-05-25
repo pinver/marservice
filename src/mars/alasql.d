@@ -263,9 +263,8 @@ string toSql(Type t){
         //     doesn't perform any check for unknown type, so ...
         case bytea: return "bytea";
 
-        // right now handle as a smallint, insert client side not implemented right now
-        case serial: return "integer";
-        case smallserial: return "smallint";
+        case serial: return "serial";
+        case smallserial: return "smallserial";
 
         case unknown:
         case date:
