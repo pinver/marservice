@@ -144,11 +144,10 @@ string referenceJs(const(Table) table, const(Schema) schema)
 unittest {
     enum sc = Schema("testschema", [
         immutable Table("bar1", [Col("foo", Type.text, false), Col("poo", Type.text, false)], [0, 1], [] ),
-        immutable Table("bar1", [Col("foo", Type.text, false), Col("poo", Type.text, false)], [0, 1], [] ),
         immutable Table("bar2", [Col("foo", Type.text, false), Col("poo", Type.text, false)], [], [Reference([0,1], "bar1", [0,1])]),
     ]);
     enum eee = referenceJs(sc.tables[1], sc);
-    static assert( eee == "(function a(c) { return [{ referenceCols: ['foo', 'poo'], referencedTable: 'bar1', referencedIndex: 1, referencedCols: ['foo', 'poo'] }]; })", eee);
+    static assert( eee == "(function a(c) { return [{ referenceCols: ['foo', 'poo'], referencedTable: 'bar1', referencedIndex: 0, referencedCols: ['foo', 'poo'] }]; })", eee);
 }
 
 
