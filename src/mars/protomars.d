@@ -207,6 +207,7 @@ struct MarsProxyStoC(S)
             {
                 return false;
             }
+            logInfo("mars - catched during socket.send! the exception message is '%s'! now rethrowing!", e.msg);
             throw e;
         }
         return true;
