@@ -19,12 +19,16 @@ import vibe.core.log;
 
 string insertIntoReturningParameter(const(Table) table)
 {
-    return "insert into %s values (%s) returning *"
-        .format(table.name, iota(0, table.columns.length).map!( (c) => "$" ~ (c+1).to!string).join(", "));
+    int i = 1;
+    return "insert into %s values (%s) returning *".format(
+        table.name,
+        table.columns.map!( (c) => c.type == Type.serial? "default" : "$" ~ (i++).to!string).join(", "));
 }
 unittest {
     auto sql = Table("bar", [Col("foo", Type.text, false), Col("baz", Type.text, false)],[],[]).insertIntoReturningParameter();
     assert( sql == "insert into bar values ($1, $2) returning *", sql );
+    auto sql2 = Table("bar", [Col("w_id", Type.serial), Col("w", Type.text)], [0], []).insertIntoReturningParameter();
+    assert( sql2 == "insert into bar values (default, $1) returning *", sql2);
 }
 
 string deleteFromParameter(const(Table) table)
@@ -161,8 +165,7 @@ class Database
     auto executeInsert(immutable(Table) table, Row, )(Row record, ref InsertError err){
         enum sql = insertIntoReturningParameter(table);
         auto cmd = new PGCommand(conn, sql);
-        
-        addParameters!table(cmd, record);
+        addParameters!(table, Row, true)(cmd, record); // skip serial parameters
         Row result;
         try {
             auto querySet = cmd.executeQuery!Row();
@@ -264,16 +267,24 @@ private {
         }
     }
 
-    void addParameters(immutable(Table) table, Struct, short tupleofIndex =0)(PGCommand cmd, Struct s, short paramIndex =1){
-        static if( is(Struct : asStruct!table) || Struct.tupleof.length == asStruct!(table).tupleof.length ){
-            cmd.parameters.add(paramIndex, table.columns[tupleofIndex].type.toPGType).value = s.tupleof[tupleofIndex];
+    void addParameters(immutable(Table) table, Struct, bool noSerials = false, short tupleofIndex =0)(PGCommand cmd, Struct s, short paramIndex =1){
+        static if( is(Struct : asStruct!table) || Struct.tupleof.length == asStruct!(table).tupleof.length )
+        {
+            auto type =  table.columns[tupleofIndex].type;
+            static if( noSerials ) auto mustAdd = type != Type.serial && type != Type.smallserial;
+            else bool mustAdd = true;
+            if( mustAdd ) cmd.parameters.add(paramIndex, table.columns[tupleofIndex].type.toPGType).value = s.tupleof[tupleofIndex];
         }
-        else static if( is(Struct : asPkStruct!table) || Struct.tupleof.length == asPkStruct!(table).tupleof.length ){
-            cmd.parameters.add(paramIndex, table.pkCols[tupleofIndex].type.toPGType).value = s.tupleof[tupleofIndex];
+        else static if( is(Struct : asPkStruct!table) || Struct.tupleof.length == asPkStruct!(table).tupleof.length )
+        {
+            auto type =  table.columns[tupleofIndex].type;
+            static if( noSerials ) auto mustAdd = type != Type.serial && type != Type.smallserial;
+            else bool mustAdd = true;
+            if( mustAdd ) cmd.parameters.add(paramIndex, table.pkCols[tupleofIndex].type.toPGType).value = s.tupleof[tupleofIndex];
         }
         else static assert(false);
 
-        static if( s.tupleof.length > tupleofIndex+1 ) addParameters!(table, Struct, tupleofIndex +1)(cmd, s, ++paramIndex);
+        static if( s.tupleof.length > tupleofIndex+1 ) addParameters!(table, Struct, noSerials, tupleofIndex +1)(cmd, s, ++paramIndex);
     }
 
 

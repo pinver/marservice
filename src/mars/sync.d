@@ -257,33 +257,33 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
     }
 
     /// insert a new row in the server table, turning clients table out of sync
-    ColumnsStruct insertRecord(Database db, ColumnsStruct record, ref InsertError err, string username,string clientid){
-        KeysStruct keys = pkValues!table(record);
+    ColumnsStruct insertRecord(Database db, ColumnsStruct record, ref InsertError err, string username, string clientId){
         static if(table.durable){
             auto inserted = db.executeInsert!(table, ColumnsStruct)(record, err);
         } else {
-            fixtures[keys] = record;
+            fixtures[pkValues!table(record)] = record;
             auto inserted = record;
             err = InsertError.inserted;
         }
         if( err == InsertError.inserted ){
             static if(table.decorateRows){
                 asSyncStruct!table rec;
-                assignCommonFields(rec, record);
+                assignCommonFields(rec, inserted);
                 with(rec){
-                    mars_who = username ~ "@" ~ clientid; mars_what = "inserted";
+                    mars_who = username ~ "@" ~ clientId; mars_what = "inserted";
                     mars_when = Clock.currTime.toString();
                 }
             }
             else {
-                auto rec = record;
+                auto rec = inserted;
             }
-            toInsert[keys] = rec;
+            toInsert[pkValues!table(inserted)] = rec;
             // ... don't propagate if not cached, or we are triggering a loot of refresh
             //     stick with manual refresh done on client.
             if(table.cacheRows){
-                foreach(ref cst; clientSideTables.values){
-                    cst.ops ~= new ClientInsertValues!ClientT();
+                foreach(key; clientSideTables.byKey.filter!( (a) => a != clientId )){
+                    auto cst = key in clientSideTables;
+                    (*cst).ops ~= new ClientInsertValues!ClientT();
                 }
             }
         }

@@ -262,8 +262,10 @@ string toSql(Type t){
         //     doesn't perform any check for unknown type, so ...
         case bytea: return "bytea";
 
-        case serial: return "serial";
-        case smallserial: return "smallserial";
+        // ... the mars client library is handling directly the 'autoincrement' alasql type, as we need to 
+        //     reconcile the optimistic updated serial with the server ...
+        case serial: return "smallint";
+        case smallserial: return "integer";
 
         case unknown:
         case date:
