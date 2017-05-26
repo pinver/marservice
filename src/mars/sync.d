@@ -389,8 +389,9 @@ class ServerSideTable(ClientT, immutable(Table) table) : BaseServerSideTable!Cli
             else {
                 toDelete[k] = 0;
             }
-            foreach(ref cst; clientSideTables.values){
-                cst.ops ~= new ClientDeleteValues!ClientT();
+            foreach(key; clientSideTables.byKey.filter!( (a) => a != clientid )){
+                auto cst = key in clientSideTables;
+                (*cst).ops ~= new ClientDeleteValues!ClientT();
             }
         }
         return keys;
