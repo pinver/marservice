@@ -85,6 +85,7 @@ class BaseServerSideTable(ClientT)
             Json jsonRow = Json.emptyArray;
             foreach(i, variantField; variantRow){
                 if(variantField.type == typeid(int)){ jsonRow ~= variantField.get!int; }
+                else if(variantField.type == typeid(short)){ jsonRow ~= variantField.get!short; }
                 else if(variantField.type == typeid(float)){ jsonRow ~= variantField.get!float; }
                 else if(variantField.type == typeid(long)){ jsonRow ~= variantField.get!long; }
                 else if(variantField.type == typeid(string)){ jsonRow ~= variantField.get!string; }
