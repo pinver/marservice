@@ -166,9 +166,10 @@ class MarsServer
         immutable(string)[] statements;
         immutable(string)[] jsStatements;
   
-        jsStatements ~= jsIndexStatementFor;
+        jsStatements ~= jsIndexStatementFor; // returns index for operation O on table T
         jsStatements ~= `[%s]`.format(schema.tables.map!((t) => t.decorateRows.to!string).join(", ").array);
         jsStatements ~= `[%s]`.format(schema.tables.map!((t) => t.cacheRows.to!string).join(", ").array);
+        jsStatements ~= `{ %s }`.format(schema.tables.map!((t) => `"%s": { "index": %d }`.format(t.name, t.index) ).join(", ").array);
         foreach(table; schema.tables){
             statements ~= table.insertIntoParameter;           // 'insert'
             statements ~= table.updateParameter;               // 'update'
