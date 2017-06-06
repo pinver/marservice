@@ -203,7 +203,8 @@ struct MarsProxyStoC(S)
         catch(Exception e){
             // XXX libasync is raising a standard exception...
             if( e.msg == "The remote peer has closed the connection." || 
-                e.msg == "WebSocket connection already actively closed.")
+                e.msg == "WebSocket connection already actively closed." ||
+                e.msg == "Remote hung up while writing to TCPConnection.")
             {
                 return false;
             }
