@@ -91,6 +91,10 @@ void protoMars(S)(MarsClient* client, S socket_)
                 protoSubscribe(client, socket);
                 break;
 
+            case pingReq:
+                logInfo("mars - S<--%s - received a ping keep alive request", client.id);
+                break;
+
             default:
                 logInfo("mars - S<--%s - received a message of type %s, skipping!", client.id, msgType);
                 assert(false);
