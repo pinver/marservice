@@ -124,12 +124,14 @@ class Database
     void execute(const Select select)
     {
         auto conn = lockOpenConnection();
+        scope(exit) conn.close();
         string s = `select %s from %s`.format(select.cols[0].name, select.tables[0].name);
         auto q = conn.executeQuery(s); 
     }
 
     void executeUnsafe(string sql){
         auto conn = lockOpenConnection();
+        scope(exit) conn.close();
         auto q = conn.executeQuery(sql);
         foreach(v; q){
             import std.stdio; writeln("-->", v);
@@ -137,18 +139,21 @@ class Database
     }
     T executeScalarUnsafe(T)(string sql){
         auto conn = lockOpenConnection();
+        scope(exit) conn.close();
         return conn.executeScalar!T(sql);
     }
 
     // usato da sync per la sottoscrizione di query complesse
     auto executeQueryUnsafe(string sql){
         auto conn = lockOpenConnection();
+        scope(exit) conn.close();
         return conn.executeQuery(sql);
     }
 
     // usato da sync per la sottoscrizione di query complesse, con parametri
     auto executeQueryUnsafe(string sql, Variant[string] parameters){
         auto conn = lockOpenConnection();
+        scope(exit) conn.close();
         // ... sort param names, transform names into a sequence of $1, $2
         auto pgargs = xxx(sql, parameters);
         // ... prepare the statement
@@ -181,11 +186,13 @@ class Database
 
     auto executeQueryUnsafe(Row)(string sql){
         auto conn = lockOpenConnection();
+        scope(exit) conn.close();
         return conn.executeQuery!Row(sql);
     }
 
     auto executeInsert(immutable(Table) table, Row, )(Row record, ref InsertError err){
         auto conn = lockOpenConnection();
+        scope(exit) conn.close();
         enum sql = insertIntoReturningParameter(table);
         auto cmd = new PGCommand(conn, sql);
         addParameters!(table, Row, true)(cmd, record); // skip serial parameters
@@ -212,6 +219,7 @@ class Database
 
     void executeDelete(immutable(Table) table, Pk)(Pk pk, ref DeleteError err){
         auto conn = lockOpenConnection();
+        scope(exit) conn.close();
         enum sql = deleteFromParameter(table);
         auto cmd = new PGCommand(conn, sql);
 
@@ -232,6 +240,7 @@ class Database
 
     void executeUpdate(immutable(Table) table, Pk, Row)(Pk pk, Row record, ref RequestState state){
         auto conn = lockOpenConnection();
+        scope(exit) conn.close();
         enum sql = updateFromParameters(table);
         auto cmd = new PGCommand(conn, sql);
         addParameters!(table)(cmd, record);
