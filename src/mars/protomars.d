@@ -120,7 +120,11 @@ struct MarsProxy(S)
                                    ~ (cast(ubyte*)(&(rep.type)))[0 .. 4];
         ubyte[] packed = rep.pack!true();
         logInfo("mars - %s<--S - sending reply %s of type %s with a payload of %s bytes", clientId, req.messageId, rep.type, packed.length);
-        socket.send(prefix ~ packed);
+        try { socket.send(prefix ~ packed); }
+        catch(Exception e){
+             logInfo("mars - (a) catched during socket.send! the exception message is '%s'! now rethrowing!", e.msg);
+             throw e;
+        }
     }
 
     void sendRequest(A)(int messageId, A req){
@@ -128,7 +132,12 @@ struct MarsProxy(S)
                                    ~ (cast(immutable(ubyte)*)(&(req.type)))[0 .. 4];
         immutable(ubyte)[] packed = req.pack!true().idup;
         logInfo("mars - S-->%s - sending request %s of type %s with a payload of %s bytes", clientId, messageId, req.type, packed.length);
-        socket.send(prefix ~ packed);
+        try { socket.send(prefix ~ packed); }
+        catch(Exception e){
+             logInfo("mars - (b) catched during socket.send! the exception message is '%s'! now rethrowing!", e.msg);
+             throw e;
+        }
+
     }
 
     ReceivedMessage!M receiveMsg(M)(){
@@ -189,7 +198,12 @@ struct MarsProxyStoC(S)
                                    ~ (cast(immutable(ubyte)*)(&(rep.type)))[0 .. 4];
         immutable(ubyte)[] packed = rep.pack!true().idup;
         logInfo("mars - S-->%s - sending message %d of type %s with a payload of %d bytes", clientId, req.messageId, rep.type, packed.length);
-        socket.send(prefix ~ packed);
+        try { socket.send(prefix ~ packed); }
+        catch(Exception e){
+             logInfo("mars - (c) catched during socket.send! the exception message is '%s'! now rethrowing!", e.msg);
+             throw e;
+        }
+
     }
 
     /**
@@ -202,6 +216,7 @@ struct MarsProxyStoC(S)
         try { socket.send( (prefix ~ packed).dup ); }
         catch(Exception e){
             // XXX libasync is raising a standard exception...
+            logInfo("mars - catched during socket.send! the exception message is '%s'! trying to handle it", e.msg);
             if( e.msg == "The remote peer has closed the connection." || 
                 e.msg == "WebSocket connection already actively closed." ||
                 e.msg == "Remote hung up while writing to TCPConnection." || // vibe 0.7.31 vanilla
