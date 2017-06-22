@@ -18,7 +18,6 @@ enum MsgTypeStoC {
     deleteRecordsReq = 66, deleteRecordsRep,
     insertRecordsReq = 68, insertRecordsRep,
     updateRecordsReq = 70, updateRecordsRep,
-    pingReq          = 72, pingRep,
 }
 
 
@@ -65,14 +64,6 @@ struct ImportRecordsReq {
     immutable(ubyte)[] encodedRecords;
 }
 
-struct PingReq {
-    static immutable type = MsgTypeStoC.pingReq;
-}
-
-struct PingRep {
-    static immutable type = MsgTypeStoC.pingRep;
-}
-
 struct UpdateRecordsReq {
     static immutable type = MsgTypeStoC.updateRecordsReq;
     ulong tableIndex;
@@ -110,7 +101,7 @@ enum MsgType {
 
     optUpdateReq = 50, optUpdateRep = 51, // request the server to perform an update and confirm an optimistic one
     subscribeReq = 52, subscribeRep = 52, // request to subscribe to a query
-    pingReq      = 54,                    // request to keep alive the connection
+
 
 
     welcomeBroadcast = 100, goodbyBroadcast,

@@ -212,22 +212,13 @@ class MarsServer
         import vibe.core.core : sleep, exitEventLoop;
         import vibe.core.log : logInfo;
 
-        int loopCount = 0;
         scope(failure) exitEventLoop();
         while(true) {
-            loopCount ++;
             sleep(2.seconds);
             //logInfo("mars - database handler starting to check for sync...%s", Task.getThis());
 
             clientLoop: foreach(ref client; marsClients ){
                if( client.isConnected && client.authorised ){
-                   if( loopCount % 5 == 0 ){
-                       bool sent = client.pingWebClient();
-                       if( ! sent ){
-                           logInfo("mars - the client %s seems disconnected after a ping request, continuing with another client", client.id);
-                           continue clientLoop;
-                       }
-                   }
                    bool syncStarted = false;
                    logInfo("mars - database operations for client %s", client.id);
                    auto req = SyncOperationReq(SyncOperationReq.SyncOperation.starting);

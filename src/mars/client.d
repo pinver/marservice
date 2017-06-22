@@ -125,11 +125,7 @@ struct MarsClient
 
     bool authorised() { return this.username != ""; }
     string id() { return id_; }
-
-    bool pingWebClient(){
-        return socket.sendRequest(0, PingReq()); 
-    }
-
+    
     string callServerMethod(string method, Json parameters){
         if( serverSideMethods !is null ){
             return serverSideMethods(this, method, parameters);
