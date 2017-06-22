@@ -102,53 +102,35 @@ struct DatabaseService {
 class Database
 {
     private this(string host, string database, string user, string password){
-        //if( db is null ){
-        //    db = new PostgresDB(["host": host, "database": database, "user": user, "password": password]);
-        //}
-        this.host = host; this.database = database; this.user = user; this.password = password;
-        conn_ = new PGConnection([ "host" : this.host, "database" : this.database, "user" : this.user, "password" : this.password ]);
-    }
-    private string host, database, user, password;
-
-    private auto lockOpenConnection(){
-        try {
-            conn_.executeNonQuery("select true");
+        if( db is null ){
+            db = new PostgresDB(["host": host, "database": database, "user": user, "password": password]);
         }
-        catch(Exception e){
-            logInfo("PostgreSQL connection coming from the pool seems closed: reopening it");
-            conn_ = new PGConnection([ "host" : this.host, "database" : this.database, "user" : this.user, "password" : this.password ]);
-        }
-        return conn_;
+        conn = db.lockConnection();
     }
 
     void execute(const Select select)
     {
-        auto conn = lockOpenConnection();
         string s = `select %s from %s`.format(select.cols[0].name, select.tables[0].name);
         auto q = conn.executeQuery(s); 
     }
 
     void executeUnsafe(string sql){
-        auto conn = lockOpenConnection();
         auto q = conn.executeQuery(sql);
         foreach(v; q){
             import std.stdio; writeln("-->", v);
         }
     }
     T executeScalarUnsafe(T)(string sql){
-        auto conn = lockOpenConnection();
         return conn.executeScalar!T(sql);
     }
 
     // usato da sync per la sottoscrizione di query complesse
     auto executeQueryUnsafe(string sql){
-        auto conn = lockOpenConnection();
         return conn.executeQuery(sql);
     }
 
     // usato da sync per la sottoscrizione di query complesse, con parametri
     auto executeQueryUnsafe(string sql, Variant[string] parameters){
-        auto conn = lockOpenConnection();
         // ... sort param names, transform names into a sequence of $1, $2
         auto pgargs = xxx(sql, parameters);
         // ... prepare the statement
@@ -180,12 +162,10 @@ class Database
     }}
 
     auto executeQueryUnsafe(Row)(string sql){
-        auto conn = lockOpenConnection();
         return conn.executeQuery!Row(sql);
     }
 
     auto executeInsert(immutable(Table) table, Row, )(Row record, ref InsertError err){
-        auto conn = lockOpenConnection();
         enum sql = insertIntoReturningParameter(table);
         auto cmd = new PGCommand(conn, sql);
         addParameters!(table, Row, true)(cmd, record); // skip serial parameters
@@ -211,7 +191,6 @@ class Database
     }
 
     void executeDelete(immutable(Table) table, Pk)(Pk pk, ref DeleteError err){
-        auto conn = lockOpenConnection();
         enum sql = deleteFromParameter(table);
         auto cmd = new PGCommand(conn, sql);
 
@@ -231,7 +210,6 @@ class Database
     }
 
     void executeUpdate(immutable(Table) table, Pk, Row)(Pk pk, Row record, ref RequestState state){
-        auto conn = lockOpenConnection();
         enum sql = updateFromParameters(table);
         auto cmd = new PGCommand(conn, sql);
         addParameters!(table)(cmd, record);
@@ -250,9 +228,10 @@ class Database
         }
     }
 
-    private {
-        public PGConnection conn_;
-    }
+    //private {
+        private PostgresDB db;
+        public PGConnection conn;
+    //}
 }
 
 
