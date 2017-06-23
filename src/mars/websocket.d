@@ -1,7 +1,7 @@
 
 
 /**
- * Vibe gestire la ricezione di dati da websocket con una wait bloccante, cosa ottima per un protocollo req/rep, ma
+ * Vibe gestisce la ricezione di dati da websocket con una wait bloccante, cosa ottima per un protocollo req/rep, ma
  * complicata se si vuol gestire in contemporanea anche un protocollo push lato server, o task paralleli.
  *
  * Questo modulo si occupa di isolare il websocket, inviando i dati ricevuti ad un task, e facendo da proxy per i 
@@ -80,7 +80,7 @@ void handleWebSocketConnectionServiceToClient(scope WebSocket socket)
     string terminate = receiveOnly!string();
     logInfo("mars - S ... C - received the terminate signal:%s", terminate);
 }
-
+/*
 struct Proxy {
     
     import std.experimental.logger : logInfo = log, trace;
@@ -128,3 +128,4 @@ struct Proxy {
         static shared int sequence = 1;
     }
 }
+*/
