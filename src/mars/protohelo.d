@@ -16,7 +16,7 @@ import mars.protomars;
  * Params:
  *      socket : Template, proxied socket type, with Task based sync 'send' and 'receive' methods.
  */
-void protoHelo(T)(T socket)
+void protoHelo(T)(ref T socket)
 {
     import vibe.core.concurrency : send;
 

@@ -88,9 +88,9 @@ struct MarsClient
 
     /**
      * The Helo protocol will wire the active socket here, and will set this to null when disconnecting. */
-    void wireSocket(MarsProxyStoC!WebSocket socket, Task task)
+    void wireSocket(ref MarsProxyStoC!ResilientWebSocket socket, Task task)
     {
-        this.socket = socket;
+        this.socket = &socket;
         this.stocTask = task;
     }
 
@@ -172,7 +172,7 @@ struct MarsClient
         //string password;
         string seed;
 
-        MarsProxyStoC!WebSocket socket;
+        MarsProxyStoC!(ResilientWebSocket)* socket;
         public Task stocTask;
         
         public typeof(MarsServer.serverSideMethods) serverSideMethods;

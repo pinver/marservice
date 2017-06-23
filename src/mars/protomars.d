@@ -16,7 +16,7 @@ import mars.protodeleterecordrequest;
 import mars.protoupd;
 import mars.protosub;
 
-void protoMars(S)(MarsClient* client, S socket_)
+void protoMars(S)(MarsClient* client, ref S socket_)
 {
     // ... we are switching to binary msgpack ...
     //socket_.switchToBinaryMode();
@@ -105,7 +105,6 @@ void protoMars(S)(MarsClient* client, S socket_)
     //client.wireSocket( typeof(socket).init );
 }
 
-
 struct MarsProxy(S)
 {
     import msgpack : pack, unpack;
@@ -117,7 +116,7 @@ struct MarsProxy(S)
         M m; alias m this;
     }
 
-    this(S s, string ci){ this.socket = s; this.clientId = ci; }
+    this(ref S s, string ci){ this.socket = &s; this.clientId = ci; }
 
     void sendReply(Q, A)(ReceivedMessage!Q req, A rep){
         ubyte[8] prefix = (cast(ubyte*)(&(req.messageId)))[0 .. 4] 
@@ -176,7 +175,7 @@ struct MarsProxy(S)
     }
         
     private {
-        S socket;
+        S* socket;
         ubyte[] binary;
         int messageId;
         string clientId;
@@ -195,7 +194,7 @@ struct MarsProxyStoC(S)
         M m; alias m this;
     }
 
-    this(S s, string ci){ this.socket = s; this.clientId = ci; }
+    this(ref S s, string ci){ this.socket = &s; this.clientId = ci; }
 
     void sendReply(Q, A)(ReceivedMessage!Q req, A rep){
         immutable(ubyte)[8] prefix = (cast(immutable(ubyte)*)(&(req.messageId)))[0 .. 4] 
@@ -288,7 +287,7 @@ struct MarsProxyStoC(S)
     }
     
     private {
-        S socket;
+        S* socket;
         ubyte[] binary;
         int messageId;
         string clientId;
