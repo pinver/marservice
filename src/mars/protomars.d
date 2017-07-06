@@ -237,7 +237,7 @@ struct MarsProxyStoC(S)
         auto msgType = receiveType();
 
         ReceivedMessage!M msg;
-        if(msgType == MsgType.aborting) msg.status = msg.channelDropped;
+        if(msgType == MsgTypeStoC.aborting) msg.status = msg.channelDropped;
         else if( msgType != M.type ) msg.status = msg.wrongMessageReceived;
         else {
             msg.status = msg.success;
@@ -258,7 +258,7 @@ struct MarsProxyStoC(S)
         }
     }
 
-    MsgType receiveType(){
+    MsgTypeStoC receiveType(){
         import vibe.http.websockets : WebSocketException;
 
         ubyte[] data;
@@ -267,11 +267,11 @@ struct MarsProxyStoC(S)
         }
         catch(WebSocketException e){
             logInfo("mars - S<--%s - connection closed while reading message", clientId);
-            return MsgType.aborting; // XXX need a better message?
+            return MsgTypeStoC.aborting; // XXX need a better message?
         }
         if( data.length < 8 ){
             logError("mars - S<--%s - received message as binary data from websocket, length:%d, expected at least 8; closing connection", clientId, data.length);
-            return MsgType.aborting;
+            return MsgTypeStoC.aborting;
         }
         //logInfo("mars - S<--%s - message data:%s", clientId, data);
         messageId = * cast(int*)(data[0 .. 4].ptr);
@@ -279,11 +279,11 @@ struct MarsProxyStoC(S)
         logInfo("mars - S<--%s - message id %d of type %d", clientId, messageId, msgType);
         if( msgType < MsgType.min || msgType > MsgType.max ){
             logError("mars - S<--%s - received message of type %d, unknown; closing connection.", clientId, msgType);
-            return MsgType.aborting;
+            return MsgTypeStoC.aborting;
         }
 
         binary = data[8 .. $];
-        return cast(MsgType)msgType;
+        return cast(MsgTypeStoC)msgType;
     }
     
     private {
