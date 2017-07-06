@@ -19,6 +19,8 @@ enum MsgTypeStoC {
     insertRecordsReq = 68, insertRecordsRep,
     updateRecordsReq = 70, updateRecordsRep,
     pingReq          = 72, pingRep,
+    
+    aborting = 201
 }
 
 
