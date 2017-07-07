@@ -9,9 +9,9 @@
     "buildRequirements": ["silenceDeprecations"],
     "dependencies":
     {
-        "vibe-d:core": ">=0.7.31",
-        "vibe-d:http": ">=0.7.31",
-        "ddb": "~master"
+        "vibe-d:core": "~>0.8.0-rc.5",
+        "vibe-d:http": "~>0.8.0-rc.5",
+        "ddb": ">=0.0.0"
     },
 
     "buildTypes": {

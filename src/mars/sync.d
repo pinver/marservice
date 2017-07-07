@@ -606,7 +606,7 @@ private
         override void execute(
             Database db, MarsClientT marsClient, ClientSideTable!(MarsClientT)* cst, BaseServerSideTable!MarsClientT sst
         ){
-            assert(db !is null);
+            //assert(db !is null); not true for not durable table
 
             // ... if the table is empty, simply do nothing ...
             if( sst.count(db) > 0 ){
