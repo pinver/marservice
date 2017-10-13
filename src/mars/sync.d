@@ -20,6 +20,7 @@ import std.format;
 import std.meta;
 import std.typecons;
 import std.variant;
+import std.base64;
 
 import std.experimental.logger;
 
@@ -91,8 +92,7 @@ class BaseServerSideTable(ClientT)
                 else if(variantField.type == typeid(string)){ jsonRow ~= variantField.get!string; }
                 else if(variantField.type == typeid(ubyte[])){
                     // ... if I apply directly the '=~', the arrays are flattened!
-                    jsonRow ~= 0;
-                    jsonRow[jsonRow.length-1] = variantField.get!(ubyte[]).serializeToJson;
+                    jsonRow ~= cast(string)Base64.encode(variantField.get!(ubyte[]));
                 }
                 else {
                     import std.stdio; writeln(variantField.type);
