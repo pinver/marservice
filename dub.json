@@ -2,15 +2,15 @@
     "name": "mars",
     "authors": ["Paolo Invernizzi"],
     "description": "Server Side support for Mars.",
-    "copyright": "Copyright © 2016, Paolo Invernizzi",
+    "copyright": "Copyright © 2016-2017, Paolo Invernizzi",
     "license": "MIT",
 
     "targetPath": "bin",
     "buildRequirements": ["silenceDeprecations"],
     "dependencies":
     {
-        "vibe-d:core": "~>0.8.0-rc.5",
-        "vibe-d:http": "~>0.8.0-rc.5",
+        "vibe-d:core": "~>0.8.1",
+        "vibe-d:http": "~>0.8.1",
         "ddb": ">=0.0.0"
     },
 
