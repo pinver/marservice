@@ -119,6 +119,7 @@ struct ResilientWebSocket
                 case "WebSocket connection already actively closed.":
                 case "Remote hung up while writing to TCPConnection.":
                 case "Connection error while writing to TCPConnection.":
+                case "Error writing data to socket.": // macOS, vibe 0.8.1, vibecore
                     logWarn("mars - please classify the exception in websocket module!");
                     sent = false;
                     break;
@@ -145,6 +146,7 @@ struct ResilientWebSocket
                 case "WebSocket connection already actively closed.":
                 case "Remote hung up while writing to TCPConnection.":
                 case "Connection error while writing to TCPConnection.":
+                case "Error writing data to socket.": // macOS, vibe 0.8.1, vibecore
                     logWarn("mars - please classify the exception in websocket module!");
                     sent = false;
                     break;

@@ -53,6 +53,7 @@ void protoSubscribe(S)(MarsClient* client, S socket) {
         case internalServerError:
         case rejectedAsDecodingFailed:
         case rejectedAsNotAuthorised:
+        case rejectedAsForeignKeyViolation:
         case rejectedAsPGSqlError:
             socket.sendReply(req, SubscribeRep(state, stringified));
             break;

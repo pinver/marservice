@@ -220,6 +220,10 @@ class Database
         }
         catch(ServerErrorException e){
             switch(e.code){
+                case "23503":
+                    logInfo("S --- C | PostgreSQL can't update the primary key as still referenced (maybe add an update cascade?).");
+                    state = RequestState.rejectedAsForeignKeyViolation;
+                    break;
                 default:
                     logWarn("S --- C | Unhandled PostgreSQL server error during update!");
                     logInfo("S --- C | PostgreSQL server error: %s", e.toString);

@@ -7,7 +7,10 @@ enum RequestState
     // ... client side bugs or tampering of the request
     rejectedAsDecodingFailed, /// the deconding of the data is failed
     rejectedAsWrongParameter, /// the value of one of the request parameters is wrong.
+
     rejectedAsNotAuthorised,  /// the client is not authorised for the request (ex, subscription before of authentication)
+    rejectedAsForeignKeyViolation, /// update or delete on table violates foreign key constraint on another table (ERR 23503)
+
     rejectedAsPGSqlError,     /// PostgreSQL unhandled error
     internalServerError,
 }
