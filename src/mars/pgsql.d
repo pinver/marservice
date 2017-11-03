@@ -201,6 +201,9 @@ class Database
         }
         catch(ServerErrorException e){
             switch(e.code){
+                case "23503": // update or delete on table "<table>" violates foreign key constraint "<constraint>" on table "<othertable>"
+                    err = DeleteError.rejectedAsForeignKeyViolation;
+                    break;
                 default:
                     logWarn("S --- C | Unhandled PostgreSQL server error during deletion!");
                     logInfo("S --- C | PostgreSQL server error: %s", e.toString);
