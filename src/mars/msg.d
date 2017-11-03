@@ -236,6 +236,7 @@ enum DeleteError {
     assertCheck,
     deleted,
     unknownError,
+    rejectedAsForeignKeyViolation,
 }
 
 // the reply is flowing from server to client
