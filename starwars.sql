@@ -81,4 +81,6 @@ insert into weapons values
     (default, 'no weapon'), (default, 'sonic missiles');
 
 insert into starships values
-    ('NanShip', 'NaN', 1);
+    ("X-Wing", 1.0, 1), ('NanShip', 'NaN', 1);
+
+insert into council values ('Luke');
