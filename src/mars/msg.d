@@ -116,6 +116,7 @@ enum MsgType {
     optUpdateReq = 50, optUpdateRep = 51, // request the server to perform an update and confirm an optimistic one
     subscribeReq = 52, subscribeRep = 52, // request to subscribe to a query
     pingReq      = 54,                    // request to keep alive the connection
+    pesUpdateReq = 56, pesUpdateRep = 57, // request the server to perform an update pessimistically
 
 
     welcomeBroadcast = 100, goodbyBroadcast,
@@ -260,6 +261,21 @@ struct OptUpdateReq
 struct OptUpdateRep 
 {
     static immutable type = MsgType.optUpdateRep;
+    RequestState state;
+}
+
+// request an update of a record to the server, that the client has optimistically updated
+struct PesUpdateReq 
+{
+    static immutable type = MsgType.pesUpdateReq;
+    ulong tableIndex;           /// the index identifier of the updated table.
+    immutable(ubyte)[] keys;    /// the primary keys of the record to update
+    immutable(ubyte)[] record;  /// the new values for that record
+}
+
+struct PesUpdateRep 
+{
+    static immutable type = MsgType.pesUpdateRep;
     RequestState state;
 }
 

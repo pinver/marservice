@@ -86,6 +86,11 @@ void protoMars(S)(MarsClient* client, ref S socket_)
                 protoOptUpdate(client, socket);
                 break;
 
+            case pesUpdateReq:
+                logInfo("mars - S<--%s - received an update originating from an pessimistic client update", client.id);
+                protoPesUpdate(client, socket);
+                break;
+            
             case subscribeReq:
                 logInfo("mars - S<--%s - id:%s - received a request for subscription", client.id, socket.messageId, client.id);
                 protoSubscribe(client, socket);
