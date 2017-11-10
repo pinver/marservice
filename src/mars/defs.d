@@ -85,6 +85,7 @@ struct Table {
     bool durable = true;
     bool decorateRows = false;
     bool cacheRows = true;
+    bool journal = false;
 
     immutable(Schema)* schema;
 

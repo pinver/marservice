@@ -16,6 +16,7 @@ version(unittest) import mars.starwars;
 import ddb.postgres;
 import ddb.db;
 import vibe.core.log;
+import vibe.data.json;
 
 string insertIntoReturningParameter(const(Table) table)
 {
@@ -57,6 +58,20 @@ unittest {
     auto sql = Table("bar", [Col("foo", Type.text, false), Col("bar", Type.text, false), Col("baz", Type.text, false)], [0], []).updateFromParameters();
     assert( sql == "update bar set foo = $1, bar = $2, baz = $3 where foo = $4", sql );
 }
+
+string selectFromParameters(const(Table) table)
+{
+    return "select * from %s where %s".format(
+            table.name, 
+            zip(iota(0, table.pkCols.length), table.pkCols)
+                .map!( (t) => t[1].name ~ " = $" ~ (t[0]+1).to!string)
+                .join(" and "));
+}
+unittest {
+    auto sql = Table("bar", [Col("foo", Type.text, false), Col("bar", Type.text, false), Col("baz", Type.text, false)], [0, 1], []).deleteFromParameter();
+    assert( sql == "select * from bar where foo = $1 and bar = $2", sql);
+}
+
 
 struct DatabaseService {
     string host;
@@ -102,6 +117,7 @@ struct DatabaseService {
 class Database
 {
     private this(string host, string database, string user, string password){
+        this.username = user;
         if( db is null ){
             db = new PostgresDB(["host": host, "database": database, "user": user, "password": password]);
         }
@@ -187,10 +203,29 @@ class Database
                     err = InsertError.unknownError;
             }
         }
+        if( table.journal && err == InsertError.inserted ){
+            logWarn("S --- C | Journaling");
+            try {
+                cmd = new PGCommand(conn, `insert into journal (username, operation, tablename, post) values ($1, 'record_inserted', $2, $3)`);
+                cmd.parameters.add(1, PGType.TEXT).value = this.username;
+                cmd.parameters.add(2, PGType.TEXT).value = table.name;
+                cmd.parameters.add(3, PGType.JSON).value = result.serializeToJson();
+                cmd.executeNonQuery();
+            }
+            catch(Exception e){
+                logWarn("Catch Exception during journaling:%s", e.toString());
+            }
+            logWarn("S --- C | Journaling done");
+        }
         return result;
     }
 
     void executeDelete(immutable(Table) table, Pk)(Pk pk, ref DeleteError err){
+        asStruct!table pre;
+        if( table.journal ){
+            pre = selectFromPk!(table, Pk)(pk);
+        }
+
         enum sql = deleteFromParameter(table);
         auto cmd = new PGCommand(conn, sql);
 
@@ -210,9 +245,30 @@ class Database
                     err = DeleteError.unknownError;
             }
         }
+        if( table.journal && err == DeleteError.deleted ){
+            logWarn("S --- C | Journaling");
+            try {
+                cmd = new PGCommand(conn, `insert into journal (username, operation, tablename, post) values ($1, 'record_deleted', $2, $3)`);
+                cmd.parameters.add(1, PGType.TEXT).value = this.username;
+                cmd.parameters.add(2, PGType.TEXT).value = table.name;
+                cmd.parameters.add(3, PGType.JSON).value = pre.serializeToJson();
+                cmd.executeNonQuery();
+            }
+            catch(Exception e){
+                logWarn("Catch Exception during journaling:%s", e.toString());
+            }
+            logWarn("S --- C | Journaling done");
+        }
     }
 
-    void executeUpdate(immutable(Table) table, Pk, Row)(Pk pk, Row record, ref RequestState state){
+    void executeUpdate(immutable(Table) table, Pk, Row)(Pk pk, Row record, ref RequestState state)
+    {
+        
+        asStruct!table pre;
+        if( table.journal ){
+            pre = selectFromPk!(table, Pk)(pk);
+        }
+
         enum sql = updateFromParameters(table);
         auto cmd = new PGCommand(conn, sql);
         addParameters!(table)(cmd, record);
@@ -233,12 +289,46 @@ class Database
                     state = RequestState.rejectedAsPGSqlError;
             }
         }
+        if( table.journal && state == RequestState.executed ){
+            logWarn("S --- C | Journaling");
+            try {
+                cmd = new PGCommand(conn, `insert into journal (username, operation, tablename, post, pre) values ($1, 'record_updated', $2, $3, $4)`);
+                cmd.parameters.add(1, PGType.TEXT).value = this.username;
+                cmd.parameters.add(2, PGType.TEXT).value = table.name;
+                cmd.parameters.add(3, PGType.JSON).value = record.serializeToJson();
+                cmd.parameters.add(4, PGType.JSON).value = pre.serializeToJson();
+                cmd.executeNonQuery();
+            }
+            catch(Exception e){
+                logWarn("Catch Exception during journaling:%s", e.toString());
+            }
+            logWarn("S --- C | Journaling done");
+        }
     }
 
-    //private {
+    PGConnection conn;
+    private {
+
+        auto selectFromPk(immutable(Table) table, Pk)(Pk pk)
+        {
+            logWarn("S --- C | Selecting the record to be updated for the journal");
+            enum sql = selectFromParameters(table);
+            auto cmd = new PGCommand(conn, sql);
+            addParameters!table(cmd, pk);
+            //try {
+                auto querySet = cmd.executeQuery!(asStruct!table)();
+                scope(exit) querySet.close();
+                auto pre = querySet.front;
+            //}
+            //catch(ServerErrorException e){
+            //}
+            logWarn("S --- C | Select done, record is %s", pre.serializeToJson());
+            return pre;
+        }
+
         private PostgresDB db;
-        public PGConnection conn;
-    //}
+        private string username;
+    }
 }
 
 
