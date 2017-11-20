@@ -76,6 +76,7 @@ class BaseServerSideTable(ClientT)
         assert(db !is null);
     } body {
         import std.math : isNaN;
+        import std.datetime.date : Date;
         import vibe.data.json;
 
         auto resultSet = db.executeQueryUnsafe(sqlSelect, parameters);
@@ -93,6 +94,9 @@ class BaseServerSideTable(ClientT)
                 else if(variantField.type == typeid(ubyte[])){
                     // ... if I apply directly the '=~', the arrays are flattened!
                     jsonRow ~= cast(string)Base64.encode(variantField.get!(ubyte[]));
+                }
+                else if( variantField.type == typeid(Date) ){
+                    jsonRow ~= variantField.get!Date().toISOExtString(); // '2017-11-29'
                 }
                 else {
                     import std.stdio; writeln(variantField.type);
