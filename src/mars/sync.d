@@ -91,12 +91,16 @@ class BaseServerSideTable(ClientT)
                 else if(variantField.type == typeid(float)){ jsonRow ~= variantField.get!float; }
                 else if(variantField.type == typeid(long)){ jsonRow ~= variantField.get!long; }
                 else if(variantField.type == typeid(string)){ jsonRow ~= variantField.get!string; }
+                else if(variantField.type == typeid(bool)){ jsonRow ~= variantField.get!bool; }
                 else if(variantField.type == typeid(ubyte[])){
                     // ... if I apply directly the '=~', the arrays are flattened!
                     jsonRow ~= cast(string)Base64.encode(variantField.get!(ubyte[]));
                 }
                 else if( variantField.type == typeid(Date) ){
                     jsonRow ~= variantField.get!Date().toISOExtString(); // '2017-11-29'
+                }
+                else if( variantField.type is typeid(null) ){
+                    assert(false, "Returning null as a value is not supported: use coalesce(value, something) in the query to strip it out");
                 }
                 else {
                     import std.stdio; writeln(variantField.type);
