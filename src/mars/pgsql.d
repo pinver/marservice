@@ -360,9 +360,9 @@ private {
             case bytea: return PGType.BYTEA;
             case smallserial: return PGType.INT2; // XXX check
             case serial: return PGType.INT4; // there's not really a serial type in postgres
+            case date: return PGType.DATE; // XXX temptative
 
             case unknown:
-            case date:
             case varchar: // varchar(n), tbd as column
                 assert(false, t.to!string); // not implemented right now, catch at CT
         }

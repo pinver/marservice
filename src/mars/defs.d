@@ -8,6 +8,7 @@ import std.algorithm;
 import std.array;
 import std.meta;
 import std.typecons;
+import std.datetime;
 
 import mars.starwars;
 
@@ -168,7 +169,7 @@ template asD(alias t) if( is(Unqual!(typeof(t)) == Type) )
     else static if( t == Type.smallserial )     alias asD = short;
     else static if( t == Type.real_ )           alias asD = float;
     else static if( t == Type.doublePrecision ) alias asD = double;
-    else static if( t == Type.date )            alias asD = Date;
+    else static if( t == Type.date )            alias asD = string; //Date;
     else static if( t == Type.bytea )           alias asD = ubyte[];
     else static assert(false);
 }
