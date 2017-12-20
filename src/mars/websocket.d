@@ -47,7 +47,7 @@ void handleWebSocketConnectionClientToService(scope WebSocket webSocket)
     import mars.protohelo : protoHelo;
     auto socket = ResilientWebSocket(webSocket);
     protoHelo(socket);
-    } catch(Exception e){ logError("mars - C ... S - catched throwable and retrowing:%s", e.msg); throw e; }
+    } catch(Exception e){ logError("mars - C ... S - catched throwable and retrowing:%s", e.toString); throw e; }
 }
 
 /**
@@ -87,7 +87,7 @@ void handleWebSocketConnectionServiceToClient(scope WebSocket webSocket)
     logInfo("mars - S ... C - waiting for termination"); string terminate = receiveOnly!string();
     logInfo("mars - S ... C - received the terminate signal:%s", terminate);
 
-    } catch(Exception e){ logError("mars - S ... C - catched throwable and retrowing:%s", e.msg); throw e; }
+    } catch(Exception e){ logError("mars - S ... C - catched throwable and retrowing:%s", e.toString); throw e; }
 }
 
 
