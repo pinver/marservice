@@ -3,7 +3,7 @@
 	"versions": {
 		"botan": "1.12.9",
 		"botan-math": "1.0.3",
-		"ddb": "0.3.0",
+		"ddb": "~master",
 		"diet-ng": "1.4.3",
 		"eventcore": "0.8.27",
 		"libasync": "0.8.3",

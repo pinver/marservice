@@ -9,8 +9,8 @@
     "buildRequirements": ["silenceDeprecations"],
     "dependencies":
     {
-        "vibe-d:core": "~>0.8.1",
-        "vibe-d:http": "~>0.8.1",
+        "vibe-d:core": "~>0.8.2",
+        "vibe-d:http": "~>0.8.2",
         "ddb": ">=0.0.0"
     },
 
