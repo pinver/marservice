@@ -117,7 +117,7 @@ struct DatabaseService {
 class Database
 {
     private this(string host, string database, string user, string password){
-        this.username = user;
+        this.username_ = user;
         if( db is null ){
             db = new PostgresDB(["host": host, "database": database, "user": user, "password": password]);
         }
@@ -327,7 +327,8 @@ class Database
         }
 
         private PostgresDB db;
-        private string username;
+        private string username_;
+        public @property username() { return username_; }
     }
 }
 
@@ -359,9 +360,9 @@ private {
             case bytea: return PGType.BYTEA;
             case smallserial: return PGType.INT2; // XXX check
             case serial: return PGType.INT4; // there's not really a serial type in postgres
+            case date: return PGType.DATE; // XXX temptative
 
             case unknown:
-            case date:
             case varchar: // varchar(n), tbd as column
                 assert(false, t.to!string); // not implemented right now, catch at CT
         }

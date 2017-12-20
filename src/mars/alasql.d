@@ -267,8 +267,10 @@ string toSql(Type t){
         case serial: return "smallint";
         case smallserial: return "integer";
 
+        // ... temptative: actually I'm not using date in 'cached' tables, so it's just a matter of avoiding that
+        case date: return "text";
+
         case unknown:
-        case date:
         case varchar: // varchar(n), tbd as column
             assert(false, t.to!string); // not implemented right now, catch at CT
     }
