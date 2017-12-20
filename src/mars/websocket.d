@@ -113,14 +113,14 @@ struct ResilientWebSocket
             sent = false;
         }
         catch(Exception e){
-            logInfo("mars - catched during websocket.send! the exception message is '%s'! trying to handle it", e.msg);
+            //logInfo("mars - catched during websocket.send! the exception message is '%s'! trying to handle it", e.msg);
             switch(e.msg){
                 case "The remote peer has closed the connection.":
                 case "WebSocket connection already actively closed.":
                 case "Remote hung up while writing to TCPConnection.":
                 case "Connection error while writing to TCPConnection.":
-                case "Error writing data to socket.": // macOS, vibe 0.8.1, vibecore
-                    logWarn("mars - please classify the exception in websocket module!");
+                case "Error writing data to socket.": // macOS, vibe 0.8.2, vibecore
+                    //logWarn("mars - please classify the exception in websocket module!");
                     sent = false;
                     break;
                 default:
@@ -140,14 +140,14 @@ struct ResilientWebSocket
             sent = false;
         }
         catch(Exception e){
-            logInfo("mars - catched during websocket.send! the exception message is '%s'! trying to handle it", e.msg);
+            //logInfo("mars - catched during websocket.send! the exception message is '%s'! trying to handle it", e.msg);
             switch(e.msg){
                 case "The remote peer has closed the connection.":
                 case "WebSocket connection already actively closed.":
                 case "Remote hung up while writing to TCPConnection.":
                 case "Connection error while writing to TCPConnection.":
-                case "Error writing data to socket.": // macOS, vibe 0.8.1, vibecore
-                    logWarn("mars - please classify the exception in websocket module!");
+                case "Error writing data to socket.": // macOS, vibe 0.8.2, vibecore
+                    //logWarn("mars - please classify the exception in websocket module!");
                     sent = false;
                     break;
                 default:

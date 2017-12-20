@@ -229,7 +229,7 @@ class MarsServer
                        }
                    }
                    bool syncStarted = false;
-                   logInfo("mars - database operations for client %s", client.id);
+                   //logInfo("mars - database operations for client %s", client.id);
                    auto req = SyncOperationReq(SyncOperationReq.SyncOperation.starting);
                    foreach( table; tables ){
                         if(client.id in table.clientSideTables)

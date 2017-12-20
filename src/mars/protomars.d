@@ -97,7 +97,7 @@ void protoMars(S)(MarsClient* client, ref S socket_)
                 break;
 
             case pingReq:
-                logInfo("mars - S<--%s - received a ping keep alive request", client.id);
+                //logInfo("mars - S<--%s - received a ping keep alive request", client.id);
                 break;
 
             default:
@@ -220,7 +220,7 @@ struct MarsProxyStoC(S)
         immutable(ubyte)[8] prefix = (cast(immutable(ubyte)*)(&messageId))[0 .. 4] 
                                    ~ (cast(immutable(ubyte)*)(&(req.type)))[0 .. 4];
         immutable(ubyte)[] packed = req.pack!true().idup;
-        logInfo("mars - S-->%s - sending message request %d of type %s with a payload of %d bytes", clientId, messageId, req.type, packed.length);
+        //logInfo("mars - S-->%s - sending message request %d of type %s with a payload of %d bytes", clientId, messageId, req.type, packed.length);
         try { socket.send( (prefix ~ packed).dup ); }
         catch(Exception e){
             // XXX libasync is raising a standard exception...
