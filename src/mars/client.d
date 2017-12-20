@@ -161,7 +161,7 @@ struct MarsClient
             return Json.emptyObject;
         }
         auto table = new WhiteHole!(BaseServerSideTable!MarsClient)(Table());
-        auto json = table.selectAsJson(db, select, parameters);
+        auto json = table.selectAsJson(db, select, parameters, state);
         return json;
     }
 

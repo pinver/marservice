@@ -72,42 +72,49 @@ class BaseServerSideTable(ClientT)
     }
 
     /// execute a sql select statement, and returns a vibe json array with the records as json
-    auto selectAsJson(Database db, string sqlSelect, Variant[string] parameters) in {
+    auto selectAsJson(Database db, string sqlSelect, Variant[string] parameters, ref RequestState state) in {
         assert(db !is null);
     } body {
         import std.math : isNaN;
         import std.datetime : Date;
         import vibe.data.json;
 
-        auto resultSet = db.executeQueryUnsafe(sqlSelect, parameters);
-        scope(exit) resultSet.close();
-
         Json jsonRecords = Json.emptyArray;
-        foreach(variantRow; resultSet){
-            Json jsonRow = Json.emptyArray;
-            foreach(i, variantField; variantRow){
-                if(variantField.type == typeid(int)){ jsonRow ~= variantField.get!int; }
-                else if(variantField.type == typeid(short)){ jsonRow ~= variantField.get!short; }
-                else if(variantField.type == typeid(float)){ jsonRow ~= variantField.get!float; }
-                else if(variantField.type == typeid(long)){ jsonRow ~= variantField.get!long; }
-                else if(variantField.type == typeid(string)){ jsonRow ~= variantField.get!string; }
-                else if(variantField.type == typeid(bool)){ jsonRow ~= variantField.get!bool; }
-                else if(variantField.type == typeid(ubyte[])){
-                    // ... if I apply directly the '=~', the arrays are flattened!
-                    jsonRow ~= cast(string)Base64.encode(variantField.get!(ubyte[]));
+        try {
+            auto resultSet = db.executeQueryUnsafe(sqlSelect, parameters);
+            scope(exit) resultSet.close();
+
+            foreach(variantRow; resultSet){
+                Json jsonRow = Json.emptyArray;
+                foreach(i, variantField; variantRow){
+                    if(variantField.type == typeid(int)){ jsonRow ~= variantField.get!int; }
+                    else if(variantField.type == typeid(short)){ jsonRow ~= variantField.get!short; }
+                    else if(variantField.type == typeid(float)){ jsonRow ~= variantField.get!float; }
+                    else if(variantField.type == typeid(long)){ jsonRow ~= variantField.get!long; }
+                    else if(variantField.type == typeid(string)){ jsonRow ~= variantField.get!string; }
+                    else if(variantField.type == typeid(bool)){ jsonRow ~= variantField.get!bool; }
+                    else if(variantField.type == typeid(ubyte[])){
+                        // ... if I apply directly the '=~', the arrays are flattened!
+                        jsonRow ~= cast(string)Base64.encode(variantField.get!(ubyte[]));
+                    }
+                    else if( variantField.type == typeid(Date) ){
+                        jsonRow ~= variantField.get!Date().toISOExtString(); // '2017-11-29'
+                    }
+                    else if( variantField.type is typeid(null) ){
+                        assert(false, "Returning null as a value is not supported: use coalesce(value, something) in the query to strip it out");
+                    }
+                    else {
+                        import std.stdio; writeln(variantField.type);
+                        assert(false);
+                    }
                 }
-                else if( variantField.type == typeid(Date) ){
-                    jsonRow ~= variantField.get!Date().toISOExtString(); // '2017-11-29'
-                }
-                else if( variantField.type is typeid(null) ){
-                    assert(false, "Returning null as a value is not supported: use coalesce(value, something) in the query to strip it out");
-                }
-                else {
-                    import std.stdio; writeln(variantField.type);
-                    assert(false);
-                }
+                jsonRecords ~= 0; jsonRecords[jsonRecords.length-1] = jsonRow;
             }
-            jsonRecords ~= 0; jsonRecords[jsonRecords.length-1] = jsonRow;
+        }
+        catch(Exception e){
+            error("mars - S <-- ... - exception during query unsafe");
+            error(e.toString());
+            state = RequestState.rejectedAsPGSqlError;
         }
         return jsonRecords;
     }
