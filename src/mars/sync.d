@@ -76,7 +76,7 @@ class BaseServerSideTable(ClientT)
         assert(db !is null);
     } body {
         import std.math : isNaN;
-        import std.datetime.date : Date;
+        import std.datetime : Date;
         import vibe.data.json;
 
         auto resultSet = db.executeQueryUnsafe(sqlSelect, parameters);
