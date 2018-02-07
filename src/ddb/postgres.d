@@ -2364,18 +2364,7 @@ version(Have_vibe_d_core)
                 tcpConnection.close();
                 connect();
             }
-            try {
-                tcpConnection.write(bytes);
-            }
-            catch(Exception e){
-                import std.stdio; writeln("ddb connection pool, except during write:", e.toString);
-                tcpConnection.close();
-                writeln("reopening the connection...");
-                connect();
-                writeln("writing again!");
-                tcpConnection.write(bytes);
-                writeln("ok, wrote to the connection, everything should be fine again");
-            }
+            tcpConnection.write(bytes);
         }
 
         void read(ubyte[] dst)
